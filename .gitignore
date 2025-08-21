@@ -1,0 +1,47 @@
+# Database files
+*.sqlite
+
+# User uploads
+public/assets/uploads/*
+
+# Log files
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+cache/
+*.tmp
+*.cache
+
+# Session files
+sessions/
+*.sess
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
