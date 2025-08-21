@@ -6,7 +6,6 @@ public/assets/uploads/*
 !public/assets/uploads/.gitkeep
 
 # Log files
-logs/
 *.log
 
 # Environment files
