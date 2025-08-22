@@ -8,6 +8,7 @@ $redirect_uri = getenv('GOOGLE_REDIRECT_URI');
 
 // Database Configuration
 define("db_path", __DIR__ . "/../database/database.sqlite");
+$db_path = db_path;
 
 // Initialize SQLite Database
 function initDatabase($db_path) {
@@ -135,17 +136,17 @@ if (isset($_GET['code'])) {
     }
 }
 
+// Simple router - parse the URL path
+$request_uri = $_SERVER['REQUEST_URI'];
+$path = parse_url($request_uri, PHP_URL_PATH);
+$path = trim($path, '/');
+
 // Handle logout (keep backward compatibility)
 if (isset($_GET['logout']) || $path === 'logout') {
     session_destroy();
     header('Location: /');
     exit;
 }
-
-// Simple router - parse the URL path
-$request_uri = $_SERVER['REQUEST_URI'];
-$path = parse_url($request_uri, PHP_URL_PATH);
-$path = trim($path, '/');
 
 // Handle OAuth callback route
 if ($path === 'auth/google/callback') {
