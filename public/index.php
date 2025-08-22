@@ -7,7 +7,7 @@ $google_client_secret = getenv('GOOGLE_CLIENT_SECRET');
 $redirect_uri = getenv('GOOGLE_REDIRECT_URI');
 
 // Database Configuration
-$db_path = '/Users/wilihandarwo/dev/php/monophp/database/database.sqlite';
+define("db_path", __DIR__ . "/../database/database.sqlite");
 
 // Initialize SQLite Database
 function initDatabase($db_path) {
