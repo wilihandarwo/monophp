@@ -1,10 +1,10 @@
 <?php
 session_start();
 
-// Google OAuth Configuration
-$google_client_id = getenv('GOOGLE_CLIENT_ID');
-$google_client_secret = getenv('GOOGLE_CLIENT_SECRET');
-$redirect_uri = getenv('GOOGLE_REDIRECT_URI');
+// Google OAuth Configuration'
+$google_client_id = "477564036036-146vnqcb05ekq77k8inaojkloh3f99kd.apps.googleusercontent.com";
+$google_client_secret = "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";
+$redirect_uri = "https://monophp.fadli.cloud/auth/google/callback";
 
 // Database Configuration
 define("db_path", __DIR__ . "/../database/database.sqlite");
