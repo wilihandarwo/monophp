@@ -1,47 +1,241 @@
 <?php
+
+// Strict types
+declare(strict_types=1);
+
+//------------------------------------------------------------------------------
+// <config>
+//------------------------------------------------------------------------------
+const SITE_APP_VERSION = "1.0.0";
+const SITE_ENV_FILE = __DIR__ . "/../.env";
+const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
+const SITE_DOMAIN = "localhost";
+// </config>
+
+//------------------------------------------------------------------------------
+// <env>
+//------------------------------------------------------------------------------
+// Access variables: getenv('VARIABLE_NAME') or $_ENV['VARIABLE_NAME']
+function load_env()
+{
+    if (!file_exists(SITE_ENV_FILE)) {
+        die(".env file not found");
+    }
+
+    $lines = file(SITE_ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), "#") === 0) {
+            continue;
+        }
+        [$key, $value] = explode("=", $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if (strpos($value, '"') === 0 || strpos($value, "'") === 0) {
+            $value = substr($value, 1, -1);
+        }
+        putenv("$key=$value");
+        $_ENV[$key] = $value;
+    }
+}
+load_env();
+// </env>
+
+//------------------------------------------------------------------------------
+// <session>
+//------------------------------------------------------------------------------
+ini_set("session.use_only_cookies", "1");
+session_set_cookie_params([
+    "lifetime" => 86400, // 24 hours
+    "path" => "/",
+    "domain" => SITE_DOMAIN,
+    "secure" => isset($_SERVER["HTTPS"]), // Only send cookie over HTTPS
+    "httponly" => true, // Prevent JavaScript access to the session cookie
+    "samesite" => "Lax", // CSRF protection
+]);
 session_start();
+// </session>
 
-// Google OAuth Configuration'
-$google_client_id = "477564036036-146vnqcb05ekq77k8inaojkloh3f99kd.apps.googleusercontent.com";
-$google_client_secret = "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";
-$redirect_uri = "https://monophp.fadli.cloud/auth/google/callback";
+//------------------------------------------------------------------------------
+// <csrf>
+//------------------------------------------------------------------------------
+if (empty($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION["csrf_token"];
+// </csrf>
 
-// Database Configuration
-define("db_path", __DIR__ . "/../database/database.sqlite");
-$db_path = db_path;
+//------------------------------------------------------------------------------
+// <security headers>
+//------------------------------------------------------------------------------
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;");
+// </security headers>
 
-// Initialize SQLite Database
-function initDatabase($db_path) {
+//------------------------------------------------------------------------------
+// <error reporting>
+//------------------------------------------------------------------------------
+$is_development = 
+    $_SERVER["SERVER_NAME"] === "localhost" ||
+    $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+    $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+
+if ($is_development) {
+    error_reporting(E_ALL);
+    ini_set("display_errors", 1);
+    ini_set("display_startup_errors", 1);
+} else {
+    error_reporting(E_ALL);
+    ini_set("display_errors", 0);
+    ini_set("display_startup_errors", 0);
+    ini_set("log_errors", 1);
+}
+// </error reporting>
+
+//------------------------------------------------------------------------------
+// <database>
+//------------------------------------------------------------------------------
+// Creates and returns a PDO database connection.
+function get_db_connection(): PDO
+{
     try {
-        $pdo = new PDO('sqlite:' . $db_path);
+        $pdo = new PDO("sqlite:" . SITE_DB_FILE);
+        // Set PDO to throw exceptions on error, making error handling cleaner.
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        // Create users table if it doesn't exist
-        $sql = "
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_id VARCHAR(255) UNIQUE NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                picture TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ";
-        $pdo->exec($sql);
-
+        // Use default fetch mode as associative array for convenience.
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        // Enforce foreign key constraints in SQLite
+        $pdo->exec("PRAGMA foreign_keys = ON;");
         return $pdo;
     } catch (PDOException $e) {
-        die('Database connection failed: ' . $e->getMessage());
+        die("Database connection failed: " . $e->getMessage());
     }
 }
 
-// Get or create user in database
-function getOrCreateUser($pdo, $user_data) {
+// Initializes the core database tables if they don't exist.
+function initialize_database(): void
+{
+    $pdo = get_db_connection();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            google_id VARCHAR(255) UNIQUE NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            picture TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );");
+}
+
+// Initialize database on every run.
+initialize_database();
+// </database>
+
+//------------------------------------------------------------------------------
+// <helpers>
+//------------------------------------------------------------------------------
+// Escapes special characters in a string for safe HTML output.
+function e(?string $string): string
+{
+    return htmlspecialchars((string) $string, ENT_QUOTES, "UTF-8");
+}
+
+// Redirects to a URL and exits script execution.
+function redirect(string $url): void
+{
+    header("Location: " . $url);
+    exit();
+}
+
+// Checks if a user is currently logged in.
+function is_logged_in(): bool
+{
+    return isset($_SESSION["user"]);
+}
+
+// Gets the current user's data from the session.
+function get_user(): ?array
+{
+    return $_SESSION["user"] ?? null;
+}
+
+// Google OAuth - Configuration
+function get_google_config(): array
+{
+    return [
+        'client_id' => $_ENV['GOOGLE_CLIENT_ID'] ?? '',
+        'client_secret' => $_ENV['GOOGLE_CLIENT_SECRET'] ?? '',
+        'redirect_uri' => $_ENV['GOOGLE_REDIRECT_URI'] ?? 'http://localhost:8000/auth/google/callback',
+        'scope' => 'openid email profile'
+    ];
+}
+
+// Google OAuth - Generate Google OAuth URL
+function get_google_auth_url(): string
+{
+    $config = get_google_config();
+    
+    $params = [
+        'client_id' => $config['client_id'],
+        'redirect_uri' => $config['redirect_uri'],
+        'scope' => $config['scope'],
+        'response_type' => 'code',
+        'access_type' => 'online'
+    ];
+    
+    return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
+}
+
+// Google OAuth - Exchange authorization code for access token
+function exchange_code_for_token(string $code): ?array
+{
+    $config = get_google_config();
+    
+    $data = [
+        'client_id' => $config['client_id'],
+        'client_secret' => $config['client_secret'],
+        'redirect_uri' => $config['redirect_uri'],
+        'grant_type' => 'authorization_code',
+        'code' => $code
+    ];
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200) {
+        return json_decode($response, true);
+    }
+    
+    return null;
+}
+
+// Google OAuth - Get user info from Google
+function get_google_user_info(string $access_token): ?array
+{
+    $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo?access_token=' . $access_token;
+    $user_response = file_get_contents($user_info_url);
+    
+    if ($user_response !== false) {
+        return json_decode($user_response, true);
+    }
+    
+    return null;
+}
+
+// Google OAuth - Create or update user from Google data
+function create_or_update_google_user(array $google_user): ?array
+{
+    $pdo = get_db_connection();
+    
     try {
         // Check if user exists
         $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-        $stmt->execute([$user_data['id']]);
+        $stmt->execute([$google_user['id']]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
@@ -52,15 +246,15 @@ function getOrCreateUser($pdo, $user_data) {
                 WHERE google_id = ?
             ');
             $stmt->execute([
-                $user_data['name'],
-                $user_data['email'],
-                $user_data['picture'],
-                $user_data['id']
+                $google_user['name'],
+                $google_user['email'],
+                $google_user['picture'],
+                $google_user['id']
             ]);
 
             // Get updated user data
             $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-            $stmt->execute([$user_data['id']]);
+            $stmt->execute([$google_user['id']]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } else {
             // Create new user
@@ -69,117 +263,107 @@ function getOrCreateUser($pdo, $user_data) {
                 VALUES (?, ?, ?, ?)
             ');
             $stmt->execute([
-                $user_data['id'],
-                $user_data['name'],
-                $user_data['email'],
-                $user_data['picture']
+                $google_user['id'],
+                $google_user['name'],
+                $google_user['email'],
+                $google_user['picture']
             ]);
 
             // Get newly created user
             $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-            $stmt->execute([$user_data['id']]);
+            $stmt->execute([$google_user['id']]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         }
     } catch (PDOException $e) {
         die('Database error: ' . $e->getMessage());
     }
 }
+// </helpers>
 
-// Initialize database
-$pdo = initDatabase($db_path);
+//------------------------------------------------------------------------------
+// <init variables for the view>
+//------------------------------------------------------------------------------
+$errors = [];
+$messages = [];
+$user = get_user();
+$pdo = get_db_connection();
+// </init variables for the view>
+
+//------------------------------------------------------------------------------
+// <handle get requests - page routing>
+//------------------------------------------------------------------------------
+$request_uri = $_SERVER['REQUEST_URI'];
+$path = parse_url($request_uri, PHP_URL_PATH);
+$path = trim($path, '/');
 
 // Handle Google OAuth callback
 if (isset($_GET['code'])) {
     $code = $_GET['code'];
 
-    // Exchange code for access token
-    $token_url = 'https://oauth2.googleapis.com/token';
-    $token_data = [
-        'client_id' => $google_client_id,
-        'client_secret' => $google_client_secret,
-        'redirect_uri' => $redirect_uri,
-        'grant_type' => 'authorization_code',
-        'code' => $code
-    ];
+    try {
+        // Exchange code for access token
+        $token_info = exchange_code_for_token($code);
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $token_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($token_data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $token_response = curl_exec($ch);
-    curl_close($ch);
+        if (isset($token_info['access_token'])) {
+            // Get user info from Google
+            $user_data = get_google_user_info($token_info['access_token']);
 
-    $token_info = json_decode($token_response, true);
+            if ($user_data) {
+                // Save user to database and store in session
+                $db_user = create_or_update_google_user($user_data);
+                $_SESSION['user'] = [
+                    'id' => $db_user['id'],
+                    'google_id' => $db_user['google_id'],
+                    'name' => $db_user['name'],
+                    'email' => $db_user['email'],
+                    'picture' => $db_user['picture'],
+                    'created_at' => $db_user['created_at'],
+                    'updated_at' => $db_user['updated_at']
+                ];
 
-    if (isset($token_info['access_token'])) {
-        // Get user info from Google
-        $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo?access_token=' . $token_info['access_token'];
-        $user_response = file_get_contents($user_info_url);
-        $user_data = json_decode($user_response, true);
-
-        // Save user to database and store in session
-        $db_user = getOrCreateUser($pdo, $user_data);
-        $_SESSION['user'] = [
-            'id' => $db_user['id'],
-            'google_id' => $db_user['google_id'],
-            'name' => $db_user['name'],
-            'email' => $db_user['email'],
-            'picture' => $db_user['picture'],
-            'created_at' => $db_user['created_at'],
-            'updated_at' => $db_user['updated_at']
-        ];
-
-        // Redirect to dashboard
-        header('Location: /dashboard');
-        exit;
+                // Redirect to dashboard
+                redirect('/dashboard');
+            }
+        }
+    } catch (Exception $e) {
+        $errors[] = "Authentication failed. Please try again.";
     }
 }
 
-// Simple router - parse the URL path
-$request_uri = $_SERVER['REQUEST_URI'];
-$path = parse_url($request_uri, PHP_URL_PATH);
-$path = trim($path, '/');
-
-// Handle logout (keep backward compatibility)
+// Handle logout
 if (isset($_GET['logout']) || $path === 'logout') {
     session_destroy();
-    header('Location: /');
-    exit;
+    redirect('/');
 }
 
-// Handle OAuth callback route
+// Determine current page
 if ($path === 'auth/google/callback') {
-    // OAuth callback is handled above, just set current page
     $current_page = 'oauth_callback';
 } elseif ($path === 'logout') {
-    // Logout is handled above, this won't be reached but kept for clarity
     $current_page = 'logout';
 } elseif ($path === '' || $path === 'index.php') {
     $current_page = 'home';
 } elseif ($path === 'dashboard') {
     $current_page = 'dashboard';
 } else {
-    $current_page = 'home'; // Default fallback
+    $current_page = 'home';
 }
 
 // Check if user is logged in
-$is_logged_in = isset($_SESSION['user']);
+$is_logged_in = is_logged_in();
 
 // Protect dashboard page
 if ($current_page === 'dashboard' && !$is_logged_in) {
-    header('Location: /');
-    exit;
+    redirect('/');
 }
 
 // Google OAuth URL
-$google_auth_url = 'https://accounts.google.com/o/oauth2/auth?' . http_build_query([
-    'client_id' => $google_client_id,
-    'redirect_uri' => $redirect_uri,
-    'scope' => 'openid profile email',
-    'response_type' => 'code',
-    'access_type' => 'online'
-]);
+$google_auth_url = get_google_auth_url();
+// </handle get requests - page routing>
+
+//------------------------------------------------------------------------------
+// <view>
+//------------------------------------------------------------------------------
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -302,17 +486,31 @@ $google_auth_url = 'https://accounts.google.com/o/oauth2/auth?' . http_build_que
             color: #333;
             margin-bottom: 30px;
         }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <?php if (!empty($errors)): ?>
+            <?php foreach ($errors as $error): ?>
+                <div class="error"><?php echo e($error); ?></div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
         <?php if ($current_page === 'dashboard' && $is_logged_in): ?>
             <!-- Dashboard Page -->
             <h1 class="dashboard-title">Dashboard</h1>
             <div class="user-profile">
-                <img src="<?php echo htmlspecialchars($_SESSION['user']['picture']); ?>" alt="Profile Picture" class="user-avatar">
-                <div class="user-name"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></div>
-                <div class="user-email"><?php echo htmlspecialchars($_SESSION['user']['email']); ?></div>
+                <img src="<?php echo e($_SESSION['user']['picture']); ?>" alt="Profile Picture" class="user-avatar">
+                <div class="user-name"><?php echo e($_SESSION['user']['name']); ?></div>
+                <div class="user-email"><?php echo e($_SESSION['user']['email']); ?></div>
                 <a href="/logout" class="logout-btn">Logout</a>
             </div>
         <?php else: ?>
@@ -321,7 +519,7 @@ $google_auth_url = 'https://accounts.google.com/o/oauth2/auth?' . http_build_que
             <div class="subtitle">Simple & Minimalist PHP Framework</div>
 
             <?php if (!$is_logged_in): ?>
-                <a href="<?php echo htmlspecialchars($google_auth_url); ?>" class="google-btn">
+                <a href="<?php echo e($google_auth_url); ?>" class="google-btn">
                     <svg class="google-icon" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -331,7 +529,7 @@ $google_auth_url = 'https://accounts.google.com/o/oauth2/auth?' . http_build_que
                     Continue with Google
                 </a>
             <?php else: ?>
-                <p style="margin-bottom: 20px;">Welcome back, <?php echo htmlspecialchars($_SESSION['user']['name']); ?>!</p>
+                <p style="margin-bottom: 20px;">Welcome back, <?php echo e($_SESSION['user']['name']); ?>!</p>
                 <a href="/dashboard" style="background: #28a745; color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; margin-right: 10px;">Go to Dashboard</a>
                 <a href="/logout" class="logout-btn">Logout</a>
             <?php endif; ?>
@@ -339,3 +537,6 @@ $google_auth_url = 'https://accounts.google.com/o/oauth2/auth?' . http_build_que
     </div>
 </body>
 </html>
+<?php
+// </view>
+?>
