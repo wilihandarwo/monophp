@@ -46,10 +46,18 @@ define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // <session>
 //------------------------------------------------------------------------------
 ini_set("session.use_only_cookies", "1");
+// Extract domain from SITE_DOMAIN (remove protocol if present)
+$session_domain = SITE_DOMAIN;
+if (strpos($session_domain, 'http://') === 0) {
+    $session_domain = substr($session_domain, 7);
+} elseif (strpos($session_domain, 'https://') === 0) {
+    $session_domain = substr($session_domain, 8);
+}
+
 session_set_cookie_params([
     "lifetime" => 86400, // 24 hours
     "path" => "/",
-    "domain" => SITE_DOMAIN,
+    "domain" => $session_domain === 'localhost' ? '' : $session_domain, // Empty domain for localhost
     "secure" => isset($_SERVER["HTTPS"]), // Only send cookie over HTTPS
     "httponly" => true, // Prevent JavaScript access to the session cookie
     "samesite" => "Lax", // CSRF protection
