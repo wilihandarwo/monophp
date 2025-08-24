@@ -161,9 +161,9 @@ function get_user(): ?array
 function get_google_config(): array
 {
     return [
-        'client_id' => $_ENV['GOOGLE_CLIENT_ID'] ?? '',
-        'client_secret' => $_ENV['GOOGLE_CLIENT_SECRET'] ?? '',
-        'redirect_uri' => $_ENV['GOOGLE_REDIRECT_URI'] ?? '',
+        'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
+        'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
+        'redirect_uri' => getenv('GOOGLE_REDIRECT_URI') ?? '',
         'scope' => 'openid email profile'
     ];
 }
