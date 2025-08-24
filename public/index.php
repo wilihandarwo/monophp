@@ -64,9 +64,9 @@ session_set_cookie_params([
 ]);
 session_start();
 
-// Clean up stale OAuth data on every page load
-if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300) {
-    // OAuth state is older than 5 minutes, clear it
+// Clean up stale OAuth data on every page load (but not during OAuth callback)
+if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300 && !isset($_GET['code'])) {
+    // OAuth state is older than 5 minutes, clear it (unless we're processing OAuth callback)
     clear_oauth_session();
 }
 
