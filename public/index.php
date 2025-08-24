@@ -3,18 +3,14 @@
 // Strict types
 declare(strict_types=1);
 
-//------------------------------------------------------------------------------
-// <config>
-//------------------------------------------------------------------------------
-const SITE_APP_VERSION = "1.0.0";
-const SITE_ENV_FILE = __DIR__ . "/../.env";
-const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
-// </config>
+/*
+------------------------------------------------------------------------------
+<env>
+getenv('VARIABLE_NAME') or $_ENV['VARIABLE_NAME']
+------------------------------------------------------------------------------
+*/
 
-//------------------------------------------------------------------------------
-// <env>
-//------------------------------------------------------------------------------
-// Access variables: getenv('VARIABLE_NAME') or $_ENV['VARIABLE_NAME']
+const SITE_ENV_FILE = __DIR__ . "/../.env";
 function load_env()
 {
     if (!file_exists(SITE_ENV_FILE)) {
@@ -38,13 +34,27 @@ function load_env()
 }
 load_env();
 
-// Get SITE_DOMAIN from environment variables with fallback (after env is loaded)
-define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // </env>
 
-//------------------------------------------------------------------------------
-// <session>
-//------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------
+<config>
+------------------------------------------------------------------------------
+*/
+
+const SITE_APP_VERSION = "1.0.0";
+const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
+const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
+define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
+
+// </config>
+
+/*
+------------------------------------------------------------------------------
+<session>
+------------------------------------------------------------------------------
+*/
+
 ini_set("session.use_only_cookies", "1");
 // Extract domain from SITE_DOMAIN (remove protocol if present)
 $session_domain = SITE_DOMAIN;
@@ -77,54 +87,176 @@ if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400
 }
 // </session>
 
-//------------------------------------------------------------------------------
-// <csrf>
-//------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------
+<csrf>
+------------------------------------------------------------------------------
+*/
+
 if (empty($_SESSION["csrf_token"])) {
     $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION["csrf_token"];
+
 // </csrf>
 
-//------------------------------------------------------------------------------
-// <security headers>
-//------------------------------------------------------------------------------
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;");
-// </security headers>
+/*
+------------------------------------------------------------------------------
+<security headers - csp>
+------------------------------------------------------------------------------
+*/
 
-//------------------------------------------------------------------------------
-// <error reporting>
-//------------------------------------------------------------------------------
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;");
+
+// </security headers - csp>
+
+/*
+------------------------------------------------------------------------------
+<error reporting>
+------------------------------------------------------------------------------
+*/
+
+// $is_development = false;
 $is_development = 
     $_SERVER["SERVER_NAME"] === "localhost" ||
     $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
     $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
 
+// Setup error log
+$error_log_path = SITE_LOG_FILE;
+if (!file_exists($error_log_path)) {
+    touch($error_log_path);
+    chmod($error_log_path, 0666);
+}
+
+// Helper function to get error type name
+function getErrorTypeName($errno) {
+    return match ($errno) { E_ERROR => "Fatal Error", E_WARNING => "Warning", E_PARSE => "Parse Error", E_NOTICE => "Notice", E_CORE_ERROR => "Core Error", E_CORE_WARNING => "Core Warning", E_COMPILE_ERROR => "Compile Error", E_COMPILE_WARNING => "Compile Warning", E_USER_ERROR => "User Error", E_USER_WARNING => "User Warning", E_USER_NOTICE => "User Notice", E_RECOVERABLE_ERROR => "Recoverable Error", E_DEPRECATED => "Deprecated", E_USER_DEPRECATED => "User Deprecated", default => "Unknown Error", };
+}
+
+// Helper function to get code context
+function getCodeContext($file, $line, $context_lines = 5) {
+    if (!file_exists($file)) return "File not found";
+    
+    $lines = file($file);
+    $start = max(0, $line - $context_lines - 1);
+    $end = min(count($lines), $line + $context_lines);
+    
+    $context = "";
+    for ($i = $start; $i < $end; $i++) {
+        $line_num = $i + 1;
+        $marker = ($line_num == $line) ? " >>> " : "     ";
+        $context .= sprintf("%s%d: %s", $marker, $line_num, $lines[$i]);
+    }
+    
+    return $context;
+}
+
+// Development environment
 if ($is_development) {
     error_reporting(E_ALL);
-    ini_set("display_errors", 1);
-    ini_set("display_startup_errors", 1);
+    ini_set("display_errors", 0);
+    ini_set("display_startup_errors", 0);
+
+    // Error handler for development
+    set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+        $error_type = getErrorTypeName($errno);
+        $code_context = getCodeContext($errfile, $errline);
+        
+        echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+        echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ {$error_type}</h3>";
+        echo "<p><strong>Message:</strong> {$errstr}</p>";
+        echo "<p><strong>File:</strong> {$errfile}</p>";
+        echo "<p><strong>Line:</strong> {$errline}</p>";
+        echo "<details><summary><strong>Code Context</strong></summary>";
+        echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+        echo "</details>";
+        echo "</div>";
+        
+        return true;
+    });
+
+    // Exception handler for development
+    set_exception_handler(function ($e) {
+        $code_context = getCodeContext($e->getFile(), $e->getLine());
+        
+        echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+        echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>💥 Uncaught Exception</h3>";
+        echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
+        echo "<p><strong>File:</strong> " . $e->getFile() . "</p>";
+        echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
+        echo "<details><summary><strong>Code Context</strong></summary>";
+        echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+        echo "</details>";
+        echo "<details><summary><strong>Stack Trace</strong></summary>";
+        echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>" . $e->getTraceAsString() . "</pre>";
+        echo "</details>";
+        echo "</div>";
+    });
+    
+// Production environment
 } else {
     error_reporting(E_ALL);
     ini_set("display_errors", 0);
     ini_set("display_startup_errors", 0);
     ini_set("log_errors", 1);
+    ini_set("error_log", $error_log_path);
+
+    // Start error group logging
+    date_default_timezone_set("Asia/Jakarta");
+    $date = date("Y-m-d H:i:s");
+    $uri = $_SERVER["REQUEST_URI"] ?? 'CLI';
+    $separator = "\n========== Error Group: {$date} WIB | URI: {$uri} ==========\n";
+    file_put_contents($error_log_path, $separator, FILE_APPEND);
+
+    // Error handler for production
+    set_error_handler(function ($errno, $errstr, $errfile, $errline) use ($error_log_path) {
+        $date = date("Y-m-d H:i:s");
+        $error_type = getErrorTypeName($errno);
+        $error_message = "[{$date}] {$error_type} [{$errno}]: {$errstr}\n";
+        $error_message .= "File: {$errfile}\n";
+        $error_message .= "Line: {$errline}\n\n";
+        file_put_contents($error_log_path, $error_message, FILE_APPEND);
+        return true;
+    });
+
+    // Exception handler for production
+    set_exception_handler(function ($e) use ($error_log_path) {
+        $date = date("Y-m-d H:i:s");
+        $error_message = "[{$date}] Uncaught Exception: " . $e->getMessage() . "\n";
+        $error_message .= "File: " . $e->getFile() . "\n";
+        $error_message .= "Line: " . $e->getLine() . "\n";
+        $error_message .= "\nTrace:\n" . $e->getTraceAsString() . "\n";
+        file_put_contents($error_log_path, $error_message, FILE_APPEND);
+
+        // End error group
+        $separator = "==========\n\n";
+        file_put_contents($error_log_path, $separator, FILE_APPEND);
+
+        http_response_code(500);
+        echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+        echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ Server Error</h3>";
+        echo "<p>Sorry, something went wrong! Our team has been notified.</p>";
+        echo "</div>";
+        exit();
+    });
 }
+
 // </error reporting>
 
-//------------------------------------------------------------------------------
-// <database>
-//------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------
+<database>
+------------------------------------------------------------------------------
+*/
+
 // Creates and returns a PDO database connection.
 function get_db_connection(): PDO
 {
     try {
         $pdo = new PDO("sqlite:" . SITE_DB_FILE);
-        // Set PDO to throw exceptions on error, making error handling cleaner.
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        // Use default fetch mode as associative array for convenience.
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        // Enforce foreign key constraints in SQLite
         $pdo->exec("PRAGMA foreign_keys = ON;");
         return $pdo;
     } catch (PDOException $e) {
@@ -145,19 +277,82 @@ function initialize_database(): void
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
+            version TEXT UNIQUE NOT NULL,
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );");
 }
 
-// Initialize database on every run.
+// Runs pending database migrations to update the schema without data loss.
+function run_migrations(): void
+{
+    $migrations = [
+        // Migrations can be added here in the future. Example:
+        // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+    ];
+
+    $pdo = get_db_connection();
+    $applied_migrations = $pdo
+        ->query("SELECT version FROM migrations")
+        ->fetchAll(PDO::FETCH_COLUMN);
+
+    $pdo->beginTransaction();
+    try {
+        foreach ($migrations as $version => $sql) {
+            if (!in_array($version, $applied_migrations)) {
+                $pdo->exec($sql);
+                $stmt = $pdo->prepare(
+                    "INSERT INTO migrations (version) VALUES (:version)",
+                );
+                $stmt->execute([":version" => $version]);
+            }
+        }
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        die("A database migration failed: " . $e->getMessage());
+    }
+}
+
+// Initialize and migrate database on every run.
 initialize_database();
+run_migrations();
+
 // </database>
 
-//------------------------------------------------------------------------------
-// <helpers>
-//------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------
+<helpers>
+------------------------------------------------------------------------------
+*/
+
 // Escapes special characters in a string for safe HTML output.
 function e(?string $string): string
 {
     return htmlspecialchars((string) $string, ENT_QUOTES, "UTF-8");
+}
+
+// Sanitizes input data to prevent XSS attacks.
+function sanitize_input(array $data): array {
+    $sanitized = [];
+    foreach ($data as $key => $value) {
+        if (is_string($value)) {
+            $sanitized[$key] = trim(strip_tags($value));
+        } else {
+            $sanitized[$key] = $value;
+        }
+    }
+    return $sanitized;
+}
+
+// CSRF token generation and validation
+function csrf_token(): string {
+    return $_SESSION['csrf_token'];
+}
+
+// CSRF token field for forms
+function csrf_field(): string {
+    return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
 }
 
 // Redirects to a URL and exits script execution.
@@ -166,6 +361,20 @@ function redirect(string $url): void
     header("Location: " . $url);
     exit();
 }
+
+// </helpers>
+
+/*
+------------------------------------------------------------------------------
+<function>
+------------------------------------------------------------------------------
+*/
+
+/*
+****************************************
+<auth>
+****************************************
+*/
 
 // Clear stale OAuth sessions and data
 function clear_oauth_session(): void
@@ -252,8 +461,6 @@ function get_google_auth_url(): string
     $state = bin2hex(random_bytes(16));
     $_SESSION['oauth_state'] = $state;
     $_SESSION['oauth_timestamp'] = time();
-    
-
     
     $params = [
         'client_id' => $config['client_id'],
@@ -397,7 +604,12 @@ function create_or_update_google_user(array $google_user): ?array
         die('Database error: ' . $e->getMessage());
     }
 }
-// </helpers>
+
+// </auth>
+
+
+
+// </function>
 
 //------------------------------------------------------------------------------
 // <init variables for the view>
@@ -408,9 +620,12 @@ $user = get_user();
 $pdo = get_db_connection();
 // </init variables for the view>
 
-//------------------------------------------------------------------------------
-// <handle get requests - page routing>
-//------------------------------------------------------------------------------
+/*
+------------------------------------------------------------------------------
+<session>
+------------------------------------------------------------------------------
+*/
+
 $request_uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($request_uri, PHP_URL_PATH);
 $path = trim($path, '/');
@@ -545,6 +760,14 @@ if (isset($_GET['logout']) || $path === 'logout') {
     exit;
 }
 
+// </session>
+
+/*
+------------------------------------------------------------------------------
+<routes>
+------------------------------------------------------------------------------
+*/
+
 // Determine current page
 if ($path === 'auth/google/callback') {
     $current_page = 'oauth_callback';
@@ -566,8 +789,7 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
     redirect('/');
 }
 
-// Google OAuth URL will be generated only when needed in the template
-// </handle get requests - page routing>
+// </routes>
 
 //------------------------------------------------------------------------------
 // <view>
