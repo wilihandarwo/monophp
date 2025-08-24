@@ -9,7 +9,8 @@ declare(strict_types=1);
 const SITE_APP_VERSION = "1.0.0";
 const SITE_ENV_FILE = __DIR__ . "/../.env";
 const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
-const SITE_DOMAIN = "localhost";
+// Get SITE_DOMAIN from environment variables with fallback
+define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // </config>
 
 //------------------------------------------------------------------------------
@@ -214,7 +215,9 @@ function get_user(): ?array
 // Google OAuth - Configuration
 function get_google_config(): array
 {
+    $site_domain = SITE_DOMAIN;
     $is_development = 
+        $site_domain === 'localhost' ||
         $_SERVER["SERVER_NAME"] === "localhost" ||
         $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
         $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
