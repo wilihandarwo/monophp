@@ -9,7 +9,7 @@ declare(strict_types=1);
 const SITE_APP_VERSION = "1.0.0";
 const SITE_ENV_FILE = __DIR__ . "/../.env";
 const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
-const SITE_DOMAIN = "https://monophp.fadli.cloud";
+const SITE_DOMAIN = "localhost";
 // </config>
 
 //------------------------------------------------------------------------------
@@ -53,6 +53,18 @@ session_set_cookie_params([
     "samesite" => "Lax", // CSRF protection
 ]);
 session_start();
+
+// Clean up stale OAuth data on every page load
+if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300) {
+    // OAuth state is older than 5 minutes, clear it
+    clear_oauth_session();
+}
+
+// Clean up expired sessions
+if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
+    // Session is older than 24 hours, clear user data
+    unset($_SESSION['user'], $_SESSION['login_time'], $_SESSION['login_ip']);
+}
 // </session>
 
 //------------------------------------------------------------------------------
@@ -145,6 +157,48 @@ function redirect(string $url): void
     exit();
 }
 
+// Clear stale OAuth sessions and data
+function clear_oauth_session(): void
+{
+    $keys_to_clear = ['oauth_state', 'oauth_timestamp', 'google_auth_error'];
+    foreach ($keys_to_clear as $key) {
+        unset($_SESSION[$key]);
+    }
+}
+
+// Validate user session
+function is_valid_session(): bool
+{
+    if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
+        return false;
+    }
+    
+    // Check if session is too old (24 hours)
+    if ((time() - $_SESSION['login_time']) > 86400) {
+        return false;
+    }
+    
+    // Check if IP changed (optional security measure)
+    $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (isset($_SESSION['login_ip']) && $_SESSION['login_ip'] !== $current_ip) {
+        error_log("Session IP mismatch. Original: " . $_SESSION['login_ip'] . ", Current: " . $current_ip);
+        // Uncomment the next line if you want strict IP validation
+        // return false;
+    }
+    
+    return true;
+}
+
+// Initialize clean OAuth session
+function init_oauth_session(): void
+{
+    // Clear any existing OAuth data
+    clear_oauth_session();
+    
+    // Clear any error messages
+    unset($_SESSION['error']);
+}
+
 // Checks if a user is currently logged in.
 function is_logged_in(): bool
 {
@@ -160,31 +214,47 @@ function get_user(): ?array
 // Google OAuth - Configuration
 function get_google_config(): array
 {
+    $is_development = 
+        $_SERVER["SERVER_NAME"] === "localhost" ||
+        $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+        $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+    
+    $redirect_uri = $is_development 
+        ? 'http://localhost:8000/auth/google/callback'
+        : getenv('GOOGLE_REDIRECT_URI');
+    
     return [
         'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
         'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
-        'redirect_uri' => getenv('GOOGLE_REDIRECT_URI') ?? '',
+        'redirect_uri' => $redirect_uri,
         'scope' => 'openid email profile'
     ];
 }
 
-// Google OAuth - Generate Google OAuth URL
+// Google OAuth - Generate Google OAuth URL with state validation
 function get_google_auth_url(): string
 {
     $config = get_google_config();
+    
+    // Generate and store state for CSRF protection
+    $state = bin2hex(random_bytes(16));
+    $_SESSION['oauth_state'] = $state;
+    $_SESSION['oauth_timestamp'] = time();
     
     $params = [
         'client_id' => $config['client_id'],
         'redirect_uri' => $config['redirect_uri'],
         'scope' => $config['scope'],
         'response_type' => 'code',
-        'access_type' => 'online'
+        'access_type' => 'online',
+        'state' => $state,
+        'prompt' => 'select_account' // Force account selection to avoid cached sessions
     ];
     
     return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
 }
 
-// Google OAuth - Exchange authorization code for access token
+// Google OAuth - Exchange authorization code for access token with error handling
 function exchange_code_for_token(string $code): ?array
 {
     $config = get_google_config();
@@ -192,9 +262,9 @@ function exchange_code_for_token(string $code): ?array
     $data = [
         'client_id' => $config['client_id'],
         'client_secret' => $config['client_secret'],
-        'redirect_uri' => $config['redirect_uri'],
+        'code' => $code,
         'grant_type' => 'authorization_code',
-        'code' => $code
+        'redirect_uri' => $config['redirect_uri']
     ];
     
     $ch = curl_init();
@@ -202,26 +272,61 @@ function exchange_code_for_token(string $code): ?array
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
     curl_close($ch);
     
-    if ($http_code === 200) {
-        return json_decode($response, true);
+    if ($curl_error) {
+        error_log("Google OAuth token exchange cURL error: " . $curl_error);
+        return null;
+    }
+    
+    if ($http_code === 200 && $response) {
+        $token_data = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($token_data['access_token'])) {
+            return $token_data;
+        }
+        error_log("Google OAuth token exchange JSON decode error or missing access_token");
+    } else {
+        error_log("Google OAuth token exchange failed. HTTP Code: $http_code, Response: $response");
     }
     
     return null;
 }
 
-// Google OAuth - Get user info from Google
+// Google OAuth - Get user information from Google with error handling
 function get_google_user_info(string $access_token): ?array
 {
-    $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo?access_token=' . $access_token;
-    $user_response = file_get_contents($user_info_url);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://www.googleapis.com/oauth2/v2/userinfo');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $access_token]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     
-    if ($user_response !== false) {
-        return json_decode($user_response, true);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($curl_error) {
+        error_log("Google OAuth user info cURL error: " . $curl_error);
+        return null;
+    }
+    
+    if ($http_code === 200 && $response) {
+        $user_data = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($user_data['email'])) {
+            return $user_data;
+        }
+        error_log("Google OAuth user info JSON decode error or missing email");
+    } else {
+        error_log("Google OAuth user info failed. HTTP Code: $http_code, Response: $response");
     }
     
     return null;
@@ -296,44 +401,134 @@ $request_uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($request_uri, PHP_URL_PATH);
 $path = trim($path, '/');
 
+// Validate existing session
+if (isset($_SESSION['user']) && !is_valid_session()) {
+    // Invalid session, clear it
+    $_SESSION = array();
+    session_destroy();
+    session_start();
+}
+
+// Handle OAuth state cleanup (manual trigger)
+if (isset($_GET['clear_oauth'])) {
+    init_oauth_session();
+    header('Location: /');
+    exit;
+}
+
 // Handle Google OAuth callback
 if (isset($_GET['code'])) {
     $code = $_GET['code'];
+    $state = $_GET['state'] ?? '';
+    $error_param = $_GET['error'] ?? '';
+    
+    // Handle OAuth errors
+    if ($error_param) {
+        error_log("Google OAuth error: " . $error_param);
+        $errors[] = 'Authentication was cancelled or failed. Please try again.';
+    }
+    // Validate state parameter for CSRF protection
+    elseif (empty($state) || !isset($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
+        error_log("Google OAuth state validation failed. Expected: " . ($_SESSION['oauth_state'] ?? 'none') . ", Got: " . $state);
+        $errors[] = 'Invalid authentication state. Please try again.';
+    }
+    // Check if state is not too old (5 minutes max)
+    elseif (!isset($_SESSION['oauth_timestamp']) || (time() - $_SESSION['oauth_timestamp']) > 300) {
+        error_log("Google OAuth state expired. Timestamp: " . ($_SESSION['oauth_timestamp'] ?? 'none'));
+        $errors[] = 'Authentication session expired. Please try again.';
+    }
+    else {
+        // Clear OAuth state from session
+        unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+        
+        try {
+            // Exchange code for access token
+            $token_info = exchange_code_for_token($code);
 
-    try {
-        // Exchange code for access token
-        $token_info = exchange_code_for_token($code);
+            if (isset($token_info['access_token'])) {
+                // Get user info from Google
+                $user_data = get_google_user_info($token_info['access_token']);
 
-        if (isset($token_info['access_token'])) {
-            // Get user info from Google
-            $user_data = get_google_user_info($token_info['access_token']);
+                if ($user_data && isset($user_data['email'])) {
+                    // Save user to database and store in session
+                    $db_user = create_or_update_google_user($user_data);
+                    
+                    if ($db_user) {
+                        // Regenerate session ID for security
+                        session_regenerate_id(true);
+                        
+                        $_SESSION['user'] = [
+                            'id' => $db_user['id'],
+                            'google_id' => $db_user['google_id'],
+                            'name' => $db_user['name'],
+                            'email' => $db_user['email'],
+                            'picture' => $db_user['picture'],
+                            'created_at' => $db_user['created_at'],
+                            'updated_at' => $db_user['updated_at']
+                        ];
+                        $_SESSION['login_time'] = time();
+                        $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-            if ($user_data) {
-                // Save user to database and store in session
-                $db_user = create_or_update_google_user($user_data);
-                $_SESSION['user'] = [
-                    'id' => $db_user['id'],
-                    'google_id' => $db_user['google_id'],
-                    'name' => $db_user['name'],
-                    'email' => $db_user['email'],
-                    'picture' => $db_user['picture'],
-                    'created_at' => $db_user['created_at'],
-                    'updated_at' => $db_user['updated_at']
-                ];
-
-                // Redirect to dashboard
-                redirect('/dashboard');
+                        // Redirect to dashboard
+                        redirect('/dashboard');
+                    } else {
+                        error_log("Failed to create/update user in database for email: " . $user_data['email']);
+                        $errors[] = 'Failed to create user account. Please try again.';
+                    }
+                } else {
+                    error_log("Failed to get user info from Google or missing email");
+                    $errors[] = 'Failed to retrieve user information from Google. Please try again.';
+                }
+            } else {
+                error_log("Failed to exchange code for token");
+                $errors[] = 'Failed to authenticate with Google. Please try again.';
             }
+        } catch (Exception $e) {
+            error_log("Google OAuth exception: " . $e->getMessage());
+            $errors[] = "Authentication failed. Please try again.";
         }
-    } catch (Exception $e) {
-        $errors[] = "Authentication failed. Please try again.";
+    }
+    
+    // Clean up OAuth session data on any error
+    if (!empty($errors)) {
+        unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
     }
 }
 
-// Handle logout
+// Handle logout with comprehensive cleanup
 if (isset($_GET['logout']) || $path === 'logout') {
+    // Clear all session data
+    $_SESSION = array();
+    
+    // Delete session cookie if it exists
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Clear any OAuth-related cookies
+    $cookie_options = [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'domain' => '',
+        'secure' => isset($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ];
+    
+    // Clear potential OAuth cookies
+    setcookie('oauth_state', '', $cookie_options);
+    setcookie('google_auth', '', $cookie_options);
+    
+    // Destroy session
     session_destroy();
-    redirect('/');
+    
+    // Redirect with cache busting
+    header('Location: /?t=' . time());
+    exit;
 }
 
 // Determine current page
@@ -499,9 +694,26 @@ $google_auth_url = get_google_auth_url();
 <body>
     <div class="container">
         <?php if (!empty($errors)): ?>
-            <?php foreach ($errors as $error): ?>
-                <div class="error"><?php echo e($error); ?></div>
-            <?php endforeach; ?>
+            <div style="background: #fee; border: 1px solid #fcc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <?php foreach ($errors as $error): ?>
+                    <p style="margin: 0; color: #c33;"><?php echo htmlspecialchars($error); ?></p>
+                <?php endforeach; ?>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    <a href="?clear_oauth=1" style="color: #667eea; text-decoration: none;">Clear OAuth state and try again</a>
+                </div>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($_GET['debug']) && $_GET['debug'] === '1'): ?>
+            <div style="background: #f0f0f0; border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
+                <strong>Debug Information:</strong><br>
+                Session ID: <?= session_id() ?><br>
+                OAuth State: <?= isset($_SESSION['oauth_state']) ? 'Set (' . substr($_SESSION['oauth_state'], 0, 8) . '...)' : 'Not set' ?><br>
+                OAuth Timestamp: <?= isset($_SESSION['oauth_timestamp']) ? date('Y-m-d H:i:s', $_SESSION['oauth_timestamp']) : 'Not set' ?><br>
+                User Session: <?= isset($_SESSION['user']) ? 'Logged in as ' . $_SESSION['user']['email'] : 'Not logged in' ?><br>
+                Current URL: <?= $_SERVER['REQUEST_URI'] ?? 'Unknown' ?><br>
+                Server Name: <?= $_SERVER['SERVER_NAME'] ?? 'Unknown' ?><br>
+            </div>
         <?php endif; ?>
 
         <?php if ($current_page === 'dashboard' && $is_logged_in): ?>
@@ -519,6 +731,10 @@ $google_auth_url = get_google_auth_url();
             <div class="subtitle">Simple & Minimalist PHP Framework</div>
 
             <?php if (!$is_logged_in): ?>
+                <?php 
+                // Initialize clean OAuth session before login
+                init_oauth_session();
+                ?>
                 <a href="<?php echo e($google_auth_url); ?>" class="google-btn">
                     <svg class="google-icon" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -528,6 +744,11 @@ $google_auth_url = get_google_auth_url();
                     </svg>
                     Continue with Google
                 </a>
+                <div style="margin-top: 15px;">
+                    <small style="color: #666;">
+                        Having login issues? <a href="?clear_oauth=1" style="text-decoration: none; color: #667eea;">Clear OAuth state</a>
+                    </small>
+                </div>
             <?php else: ?>
                 <p style="margin-bottom: 20px;">Welcome back, <?php echo e($_SESSION['user']['name']); ?>!</p>
                 <a href="/dashboard" style="background: #28a745; color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; margin-right: 10px;">Go to Dashboard</a>
