@@ -9,8 +9,6 @@ declare(strict_types=1);
 const SITE_APP_VERSION = "1.0.0";
 const SITE_ENV_FILE = __DIR__ . "/../.env";
 const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
-// Get SITE_DOMAIN from environment variables with fallback
-define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // </config>
 
 //------------------------------------------------------------------------------
@@ -39,6 +37,9 @@ function load_env()
     }
 }
 load_env();
+
+// Get SITE_DOMAIN from environment variables with fallback (after env is loaded)
+define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // </env>
 
 //------------------------------------------------------------------------------
