@@ -9,7 +9,7 @@ declare(strict_types=1);
 const SITE_APP_VERSION = "1.0.0";
 const SITE_ENV_FILE = __DIR__ . "/../.env";
 const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
-const SITE_DOMAIN = "monophp.fadli.cloud";
+const SITE_DOMAIN = "https://monophp.fadli.cloud";
 // </config>
 
 //------------------------------------------------------------------------------
