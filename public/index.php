@@ -3,13 +3,7 @@
 // Strict types
 declare(strict_types=1);
 
-/*
-------------------------------------------------------------------------------
-<envv>
-getenv('VARIABLE_NAME') or $_ENV['VARIABLE_NAME']
-------------------------------------------------------------------------------
-*/
-
+// <env>
 const SITE_ENV_FILE = __DIR__ . "/../.env";
 function load_env()
 {
@@ -33,28 +27,22 @@ function load_env()
     }
 }
 load_env();
-
 // </env>
 
-/*
-------------------------------------------------------------------------------
-<config>
-------------------------------------------------------------------------------
-*/
 
+
+
+// <config>
 const SITE_APP_VERSION = "1.0.0";
 const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
 const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
 define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
-
 // </config>
 
-/*
-------------------------------------------------------------------------------
-<session>
-------------------------------------------------------------------------------
-*/
 
+
+
+// <session>
 ini_set("session.use_only_cookies", "1");
 // Extract domain from SITE_DOMAIN (remove protocol if present)
 $session_domain = SITE_DOMAIN;
@@ -67,10 +55,10 @@ if (strpos($session_domain, 'http://') === 0) {
 session_set_cookie_params([
     "lifetime" => 86400, // 24 hours
     "path" => "/",
-    "domain" => $session_domain === 'localhost' ? '' : $session_domain, // Empty domain for localhost
-    "secure" => isset($_SERVER["HTTPS"]), // Only send cookie over HTTPS
-    "httponly" => true, // Prevent JavaScript access to the session cookie
-    "samesite" => "Lax", // CSRF protection
+    "domain" => $session_domain === 'localhost' ? '' : $session_domain,
+    "secure" => isset($_SERVER["HTTPS"]),
+    "httponly" => true,
+    "samesite" => "Lax",
 ]);
 session_start();
 
@@ -87,35 +75,24 @@ if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400
 }
 // </session>
 
-/*
-------------------------------------------------------------------------------
-<csrf>
-------------------------------------------------------------------------------
-*/
 
+
+
+// <security>
+// csrf
 if (empty($_SESSION["csrf_token"])) {
     $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
 }
 $csrf_token = $_SESSION["csrf_token"];
 
-// </csrf>
-
-/*
-------------------------------------------------------------------------------
-<security headers - csp>
-------------------------------------------------------------------------------
-*/
-
+// csp
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;");
+// </security>
 
-// </security headers - csp>
 
-/*
-------------------------------------------------------------------------------
-<error reporting>
-------------------------------------------------------------------------------
-*/
 
+
+// <error reporting>
 // $is_development = false;
 $is_development =
     $_SERVER["SERVER_NAME"] === "localhost" ||
@@ -241,19 +218,15 @@ if ($is_development) {
         exit();
     });
 }
-
-// Sample error trigger
+// Sample error trigger:
 // trigger_error("This is a sample error message.", E_USER_ERROR);
 // undefined_function();
-
 // </error reporting>
 
-/*
-------------------------------------------------------------------------------
-<database>
-------------------------------------------------------------------------------
-*/
 
+
+
+// <database>
 // Creates and returns a PDO database connection.
 function get_db_connection(): PDO
 {
