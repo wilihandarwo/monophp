@@ -90,7 +90,6 @@ $csrf_token = $_SESSION["csrf_token"];
 
 // csp
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; https:; connect-src 'self' https:;");
-// img-src 'self' https://*.googleusercontent.com data:;
 // </security-headers>
 
 
@@ -540,48 +539,67 @@ function create_or_update_google_user(array $google_user): ?array
 
     try {
         // Check if user exists
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-        $stmt->execute([$google_user['id']]);
+        $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
+        $stmt->execute([$google_user['id'], $google_user['email']]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
             // Update existing user
             $stmt = $pdo->prepare('
                 UPDATE users
-                SET name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE google_id = ?
-            ');
-            $stmt->execute([
-                $google_user['name'],
-                $google_user['email'],
-                $google_user['picture'],
-                $google_user['id']
-            ]);
-
-            // Get updated user data
-            $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-            $stmt->execute([$google_user['id']]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } else {
-            // Create new user
-            $stmt = $pdo->prepare('
-                INSERT INTO users (google_id, name, email, picture)
-                VALUES (?, ?, ?, ?)
+                SET google_id = ?, name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
             ');
             $stmt->execute([
                 $google_user['id'],
                 $google_user['name'],
                 $google_user['email'],
-                $google_user['picture']
+                $google_user['picture'],
+                $user['id']
             ]);
 
-            // Get newly created user
-            $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ?');
-            $stmt->execute([$google_user['id']]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            // Return updated user data with role preserved
+            return [
+                'id' => $user['id'],
+                'google_id' => $google_user['id'],
+                'name' => $google_user['name'],
+                'email' => $google_user['email'],
+                'picture' => $google_user['picture'],
+                'role' => $user['role'] ?? 'user',
+                'created_at' => $user['created_at'],
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+        } else {
+            // Create new user with default role
+            $stmt = $pdo->prepare('
+                INSERT INTO users (google_id, name, email, picture, role)
+                VALUES (?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $google_user['id'],
+                $google_user['name'],
+                $google_user['email'],
+                $google_user['picture'],
+                'user'
+            ]);
+
+            $user_id = $pdo->lastInsertId();
+
+            // Return newly created user data
+            return [
+                'id' => $user_id,
+                'google_id' => $google_user['id'],
+                'name' => $google_user['name'],
+                'email' => $google_user['email'],
+                'picture' => $google_user['picture'],
+                'role' => 'user',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
         }
     } catch (PDOException $e) {
-        die('Database error: ' . $e->getMessage());
+        error_log('Database error in create_or_update_google_user: ' . $e->getMessage());
+        return null;
     }
 }
 // </google-oauth>
@@ -669,6 +687,7 @@ if (isset($_GET['code'])) {
                             'name' => $db_user['name'],
                             'email' => $db_user['email'],
                             'picture' => $db_user['picture'],
+                            'role' => $db_user['role'] ?? 'user',
                             'created_at' => $db_user['created_at'],
                             'updated_at' => $db_user['updated_at']
                         ];
@@ -743,18 +762,19 @@ if (isset($_GET['logout']) || $path === 'logout') {
 
 
 // <routing>
+// Define available pages
+$pages = [
+    '' => 'home',
+    'home' => 'home',
+    'about' => 'about',
+    'contact' => 'contact',
+    'dashboard' => 'dashboard',
+    'auth/google/callback' => 'oauth_callback',
+    'logout' => 'logout'
+];
+
 // Determine current page
-if ($path === 'auth/google/callback') {
-    $current_page = 'oauth_callback';
-} elseif ($path === 'logout') {
-    $current_page = 'logout';
-} elseif ($path === '' || $path === 'index.php') {
-    $current_page = 'home';
-} elseif ($path === 'dashboard') {
-    $current_page = 'dashboard';
-} else {
-    $current_page = 'home';
-}
+$current_page = $pages[$path] ?? 'home';
 
 // Check if user is logged in
 $is_logged_in = is_logged_in();
@@ -763,6 +783,14 @@ $is_logged_in = is_logged_in();
 if ($current_page === 'dashboard' && !$is_logged_in) {
     redirect('/');
 }
+
+// Page titles
+$page_titles = [
+    'home' => 'MonoPHP',
+    'about' => 'About - MonoPHP',
+    'contact' => 'Contact - MonoPHP',
+    'dashboard' => 'Dashboard - MonoPHP'
+];
 // </routing>
 
 
@@ -775,7 +803,7 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $current_page === 'dashboard' ? 'Dashboard' : 'MonoPHP'; ?></title>
+    <title><?php echo e($page_titles[$current_page] ?? 'MonoPHP'); ?></title>
     <style>
         * {
             margin: 0;
@@ -785,137 +813,224 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #f8f9fa;
+            line-height: 1.6;
+            color: #333;
         }
 
-        .container {
+        .navbar {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
+            border-bottom: 1px solid #e9ecef;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .logo {
-            font-size: 2.5rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #333;
-            margin-bottom: 10px;
+            text-decoration: none;
         }
 
-        .subtitle {
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
             color: #666;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
+            font-weight: 500;
+            transition: color 0.2s;
         }
 
-        .google-btn {
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: #333;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #555;
+            transform: translateY(-1px);
+        }
+
+        .btn-google {
+            background: #4285f4;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            background: #4285f4;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 50px;
-            text-decoration: none;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+            gap: 0.5rem;
         }
 
-        .google-btn:hover {
+        .btn-google:hover {
             background: #3367d6;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
         }
 
-        .google-icon {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            background: white;
-            border-radius: 3px;
-            padding: 2px;
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .content h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .content p {
+            margin-bottom: 1rem;
+            color: #666;
         }
 
         .user-profile {
             text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .user-avatar {
             width: 80px;
             height: 80px;
             border-radius: 50%;
-            margin: 0 auto 20px;
-            border: 4px solid #f0f0f0;
-        }
-
-        .user-name {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .user-email {
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        .logout-btn {
-            background: #dc3545;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 25px;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            background: #c82333;
-            transform: translateY(-1px);
-        }
-
-        .dashboard-title {
-            font-size: 2rem;
-            color: #333;
-            margin-bottom: 30px;
+            margin: 0 auto 1rem;
+            border: 3px solid #f0f0f0;
         }
 
         .error {
             background: #f8d7da;
             color: #721c24;
-            padding: 10px;
+            padding: 1rem;
             border-radius: 5px;
-            margin-bottom: 20px;
+            margin-bottom: 1rem;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .nav-container {
+                padding: 0 1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">MonoPHP</a>
+            <ul class="nav-links">
+                <li><a href="/" class="<?php echo $current_page === 'home' ? 'active' : ''; ?>">Home</a></li>
+                <li><a href="/about" class="<?php echo $current_page === 'about' ? 'active' : ''; ?>">About</a></li>
+                <li><a href="/contact" class="<?php echo $current_page === 'contact' ? 'active' : ''; ?>">Contact</a></li>
+                <?php if ($is_logged_in): ?>
+                    <li><a href="/dashboard" class="<?php echo $current_page === 'dashboard' ? 'active' : ''; ?>">Dashboard</a></li>
+                    <li><a href="/logout" class="btn btn-danger">Logout</a></li>
+                <?php else: ?>
+                    <?php
+                    // Generate OAuth URL only if not already set in session
+                    if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
+                        $_SESSION['google_auth_url'] = get_google_auth_url();
+                    }
+                    ?>
+                    <li><a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
+                        <svg width="16" height="16" viewBox="0 0 24 24">
+                            <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Login
+                    </a></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
     <div class="container">
         <?php if (!empty($errors)): ?>
-            <div style="background: #fee; border: 1px solid #fcc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div class="error">
                 <?php foreach ($errors as $error): ?>
-                    <p style="margin: 0; color: #c33;"><?php echo htmlspecialchars($error); ?></p>
+                    <p><?php echo e($error); ?></p>
                 <?php endforeach; ?>
-                <div style="margin-top: 10px; font-size: 12px; color: #666;">
-                    <a href="?clear_oauth=1" style="color: #667eea; text-decoration: none;">Clear OAuth state and try again</a>
+                <div style="margin-top: 10px; font-size: 0.9rem;">
+                    <a href="?clear_oauth=1" style="color: #721c24; text-decoration: underline;">Clear OAuth state and try again</a>
                 </div>
             </div>
         <?php endif; ?>
 
         <?php if (isset($_GET['debug']) && $_GET['debug'] === '1'): ?>
-            <div style="background: #f0f0f0; border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-family: monospace; font-size: 12px;">
+            <div style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem; border-radius: 5px; margin-bottom: 2rem; font-family: monospace; font-size: 0.875rem;">
                 <strong>Debug Information:</strong><br>
                 Session ID: <?= session_id() ?><br>
                 OAuth State: <?= isset($_SESSION['oauth_state']) ? 'Set (' . substr($_SESSION['oauth_state'], 0, 8) . '...)' : 'Not set' ?><br>
@@ -926,47 +1041,297 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
             </div>
         <?php endif; ?>
 
-        <?php if ($current_page === 'dashboard' && $is_logged_in): ?>
-            <!-- Dashboard Page -->
-            <h1 class="dashboard-title">Dashboard</h1>
-            <div class="user-profile">
-                <img src="<?php echo e($_SESSION['user']['picture']); ?>" alt="Profile Picture" class="user-avatar">
-                <div class="user-name"><?php echo e($_SESSION['user']['name']); ?></div>
-                <div class="user-email"><?php echo e($_SESSION['user']['email']); ?></div>
-                <a href="/logout" class="logout-btn">Logout</a>
-            </div>
-        <?php else: ?>
-            <!-- Home Page -->
-            <div class="logo">MonoPHP</div>
-            <div class="subtitle">Simple & Minimalist PHP Framework</div>
-
-            <?php if (!$is_logged_in): ?>
-                <?php
-                // Generate OAuth URL only if not already set in session
-                if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
-                    $_SESSION['google_auth_url'] = get_google_auth_url();
-                }
+        <?php
+        // Page content based on current page
+        switch ($current_page) {
+            case 'home':
                 ?>
-                <a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="google-btn">
-                    <svg class="google-icon" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Continue with Google
-                </a>
-                <div style="margin-top: 15px;">
-                    <small style="color: #666;">
-                        Having login issues? <a href="?clear_oauth=1" style="text-decoration: none; color: #667eea;">Clear OAuth state</a>
-                    </small>
+                <div class="hero">
+                    <h1>MonoPHP</h1>
+                    <p>Simple & Minimalist PHP Framework</p>
+
+                    <?php if (!$is_logged_in): ?>
+                        <p>Build fast, secure web applications with minimal code.</p>
+                        <a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
+                            <svg width="16" height="16" viewBox="0 0 24 24">
+                                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Get Started with Google
+                        </a>
+                        <div style="margin-top: 1rem;">
+                            <small style="color: #666;">
+                                Having login issues? <a href="?clear_oauth=1" style="color: #666; text-decoration: underline;">Clear OAuth state</a>
+                            </small>
+                        </div>
+                    <?php else: ?>
+                        <p>Welcome back, <strong><?php echo e($_SESSION['user']['name']); ?></strong>!</p>
+                        <a href="/dashboard" class="btn">Go to Dashboard</a>
+                    <?php endif; ?>
                 </div>
-            <?php else: ?>
-                <p style="margin-bottom: 20px;">Welcome back, <?php echo e($_SESSION['user']['name']); ?>!</p>
-                <a href="/dashboard" style="background: #28a745; color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; margin-right: 10px;">Go to Dashboard</a>
-                <a href="/logout" class="logout-btn">Logout</a>
-            <?php endif; ?>
-        <?php endif; ?>
+
+                <div class="content">
+                    <h2>Features</h2>
+                    <p>MonoPHP is designed for developers who want to build web applications quickly without the complexity of large frameworks.</p>
+
+                </div>
+                <?php
+                break; ?>
+            <?php case 'about': ?>
+                <div class="content">
+                    <h2>About MonoPHP</h2>
+                    <p>MonoPHP is a minimalist PHP framework inspired by the philosophy of keeping things simple and effective. Built with modern web development practices in mind, it provides just enough structure to build robust applications without the bloat.</p>
+
+                    <h2>Philosophy</h2>
+                    <p>We believe in the power of simplicity. MonoPHP follows the principle that code should be:</p>
+
+                    <ul style="margin-bottom: 2rem;">
+                        <li><strong>Readable</strong> - Clean, self-documenting code</li>
+                        <li><strong>Maintainable</strong> - Easy to modify and extend</li>
+                        <li><strong>Secure</strong> - Built-in security best practices</li>
+                        <li><strong>Fast</strong> - Optimized for performance</li>
+                    </ul>
+
+                    <h2>Core Features</h2>
+
+                    <div style="display: grid; gap: 1.5rem; margin-bottom: 2rem;">
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 0.5rem; color: #333;">🛣️ Simple Routing</h3>
+                            <p style="margin: 0; color: #666;">Clean URL routing with easy-to-manage page structure. Add new pages by simply updating the switch statement.</p>
+                        </div>
+
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 0.5rem; color: #333;">🔐 OAuth Integration</h3>
+                            <p style="margin: 0; color: #666;">Built-in Google OAuth authentication with secure session management and CSRF protection.</p>
+                        </div>
+
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 0.5rem; color: #333;">🗄️ SQLite Database</h3>
+                            <p style="margin: 0; color: #666;">Lightweight SQLite database with automatic migrations and PDO for secure database operations.</p>
+                        </div>
+
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <h3 style="margin-bottom: 0.5rem; color: #333;">⚡ Error Handling</h3>
+                            <p style="margin: 0; color: #666;">Comprehensive error handling with development-friendly debugging and production-ready logging.</p>
+                        </div>
+                    </div>
+
+                    <h2>Getting Started</h2>
+                    <p>MonoPHP is designed to get you up and running quickly:</p>
+
+                    <ol style="margin-bottom: 2rem;">
+                        <li>Clone the repository</li>
+                        <li>Copy <code>.env.example</code> to <code>.env</code> and configure your settings</li>
+                        <li>Set up your Google OAuth credentials</li>
+                        <li>Start building your application</li>
+                    </ol>
+
+                    <p>That's it! You're ready to build amazing web applications with MonoPHP.</p>
+                </div>
+                <?php
+                break;
+
+            case 'contact':
+                ?>
+                <div class="content">
+                    <h2>Contact Us</h2>
+                    <p>Have questions about MonoPHP? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                        <div>
+                            <form method="POST" action="/contact" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                <?php echo csrf_field(); ?>
+
+                                <div style="margin-bottom: 1rem;">
+                                    <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Name</label>
+                                    <input type="text" id="name" name="name" required
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                </div>
+
+                                <div style="margin-bottom: 1rem;">
+                                    <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
+                                    <input type="email" id="email" name="email" required
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                </div>
+
+                                <div style="margin-bottom: 1rem;">
+                                    <label for="subject" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Subject</label>
+                                    <input type="text" id="subject" name="subject" required
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                </div>
+
+                                <div style="margin-bottom: 1.5rem;">
+                                    <label for="message" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Message</label>
+                                    <textarea id="message" name="message" rows="5" required
+                                              style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; resize: vertical;"></textarea>
+                                </div>
+
+                                <button type="submit" class="btn" style="width: 100%;">Send Message</button>
+                            </form>
+                        </div>
+
+                        <div>
+                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: fit-content;">
+                                <h3 style="margin-bottom: 1rem; color: #333;">Get in Touch</h3>
+
+                                <div style="margin-bottom: 1.5rem;">
+                                    <h4 style="margin-bottom: 0.5rem; color: #333;">📧 Email</h4>
+                                    <p style="margin: 0; color: #666;">hello@monophp.dev</p>
+                                </div>
+
+                                <div style="margin-bottom: 1.5rem;">
+                                    <h4 style="margin-bottom: 0.5rem; color: #333;">💬 Community</h4>
+                                    <p style="margin: 0; color: #666;">Join our community discussions on GitHub</p>
+                                </div>
+
+                                <div style="margin-bottom: 1.5rem;">
+                                    <h4 style="margin-bottom: 0.5rem; color: #333;">📚 Documentation</h4>
+                                    <p style="margin: 0; color: #666;">Check out our comprehensive documentation and examples</p>
+                                </div>
+
+                                <div>
+                                    <h4 style="margin-bottom: 0.5rem; color: #333;">🐛 Bug Reports</h4>
+                                    <p style="margin: 0; color: #666;">Found a bug? Please report it on our GitHub issues page</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                @media (max-width: 768px) {
+                    .content > div {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+                </style>
+                <?php
+                break;
+
+            case 'dashboard':
+                // Ensure user is logged in (this check is also done in routing)
+                if (!$is_logged_in) {
+                    redirect('/');
+                }
+
+                $user = $_SESSION['user'];
+                ?>
+
+                <div class="content">
+                    <h2>Dashboard</h2>
+                    <p>Welcome to your dashboard, <?php echo e($user['name']); ?>!</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 2rem;">
+                        <!-- User Profile Card -->
+                        <div class="user-profile">
+                            <img src="<?php echo e($user['picture']); ?>" alt="Profile Picture" class="user-avatar">
+                            <h3 style="margin-bottom: 0.5rem; color: #333;"><?php echo e($user['name']); ?></h3>
+                            <p style="margin-bottom: 1rem; color: #666;"><?php echo e($user['email']); ?></p>
+                            <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #888;">
+                                Role: <span style="background: #e9ecef; padding: 0.25rem 0.5rem; border-radius: 3px;"><?php echo e($user['role'] ?? 'user'); ?></span>
+                            </p>
+                            <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #888;">
+                                Member since: <?php echo date('M j, Y', strtotime($user['created_at'])); ?>
+                            </p>
+                            <a href="/logout" class="btn btn-danger" style="width: 100%;">Logout</a>
+                        </div>
+
+                        <!-- Dashboard Content -->
+                        <div>
+                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                                <h3 style="margin-bottom: 1rem; color: #333;">📊 Quick Stats</h3>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                                        <div style="font-size: 2rem; font-weight: 700; color: #333;">1</div>
+                                        <div style="font-size: 0.9rem; color: #666;">Active Sessions</div>
+                                    </div>
+
+                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                                        <div style="font-size: 2rem; font-weight: 700; color: #333;"><?php echo date('j'); ?></div>
+                                        <div style="font-size: 0.9rem; color: #666;">Days This Month</div>
+                                    </div>
+
+                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                                        <div style="font-size: 2rem; font-weight: 700; color: #333;">✓</div>
+                                        <div style="font-size: 0.9rem; color: #666;">Account Verified</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+                                <h3 style="margin-bottom: 1rem; color: #333;">🚀 Quick Actions</h3>
+
+                                <div style="display: grid; gap: 1rem;">
+                                    <a href="/" class="btn" style="text-decoration: none; text-align: center;">🏠 Go to Homepage</a>
+                                    <a href="/about" class="btn" style="text-decoration: none; text-align: center; background: #6c757d;">📖 Learn More About MonoPHP</a>
+                                    <a href="/contact" class="btn" style="text-decoration: none; text-align: center; background: #17a2b8;">💬 Contact Support</a>
+                                </div>
+                            </div>
+
+                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                <h3 style="margin-bottom: 1rem; color: #333;">📝 Recent Activity</h3>
+
+                                <div style="border-left: 3px solid #e9ecef; padding-left: 1rem;">
+                                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f8f9fa;">
+                                        <div style="font-weight: 500; color: #333;">Logged in successfully</div>
+                                        <div style="font-size: 0.9rem; color: #666;">Today at <?php echo date('g:i A'); ?></div>
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f8f9fa;">
+                                        <div style="font-weight: 500; color: #333;">Account created</div>
+                                        <div style="font-size: 0.9rem; color: #666;"><?php echo date('M j, Y \a\t g:i A', strtotime($user['created_at'])); ?></div>
+                                    </div>
+
+                                    <div>
+                                        <div style="font-weight: 500; color: #333;">Welcome to MonoPHP!</div>
+                                        <div style="font-size: 0.9rem; color: #666;">Start exploring the features</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                @media (max-width: 768px) {
+                    .content > div {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+                </style>
+                <?php
+                break;
+
+            default:
+                // Default to home page
+                ?>
+                <div class="hero">
+                    <h1>MonoPHP</h1>
+                    <p>Simple & Minimalist PHP Framework</p>
+
+                    <?php if (!$is_logged_in): ?>
+                        <p>Build fast, secure web applications with minimal code.</p>
+                        <a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
+                            <svg width="16" height="16" viewBox="0 0 24 24">
+                                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Get Started with Google
+                        </a>
+                    <?php else: ?>
+                        <p>Welcome back, <strong><?php echo e($_SESSION['user']['name']); ?></strong>!</p>
+                        <a href="/dashboard" class="btn">Go to Dashboard</a>
+                    <?php endif; ?>
+                </div>
+                <?php
+                break;
+        }
+        ?>
     </div>
 </body>
 </html>
