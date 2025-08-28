@@ -32,9 +32,10 @@ load_env();
 
 
 
+
 // <config>
 const SITE_APP_VERSION = "1.0.0";
-const SITE_DB_FILE = __DIR__ . "/../database/database.sqlite";
+const SITE_DB_FILE = __DIR__ . "/../database/monophp.sqlite";
 const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
 define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 // </config>
@@ -42,7 +43,8 @@ define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
 
 
 
-// <session>
+
+// <session-management>
 ini_set("session.use_only_cookies", "1");
 // Extract domain from SITE_DOMAIN (remove protocol if present)
 $session_domain = SITE_DOMAIN;
@@ -73,12 +75,13 @@ if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400
     // Session is older than 24 hours, clear user data
     unset($_SESSION['user'], $_SESSION['login_time'], $_SESSION['login_ip']);
 }
-// </session>
+// </session-management>
 
 
 
 
-// <security>
+
+// <security-headers>
 // csrf
 if (empty($_SESSION["csrf_token"])) {
     $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
@@ -86,13 +89,15 @@ if (empty($_SESSION["csrf_token"])) {
 $csrf_token = $_SESSION["csrf_token"];
 
 // csp
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:;");
-// </security>
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; https:; connect-src 'self' https:;");
+// img-src 'self' https://*.googleusercontent.com data:;
+// </security-headers>
 
 
 
 
-// <error reporting>
+
+// <error-handling>
 // $is_development = false;
 $is_development =
     $_SERVER["SERVER_NAME"] === "localhost" ||
@@ -221,7 +226,8 @@ if ($is_development) {
 // Sample error trigger:
 // trigger_error("This is a sample error message.", E_USER_ERROR);
 // undefined_function();
-// </error reporting>
+// </error-handling>
+
 
 
 
@@ -251,6 +257,7 @@ function initialize_database(): void
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255) UNIQUE NOT NULL,
             picture TEXT,
+            role VARCHAR(255) DEFAULT 'user',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );");
@@ -294,15 +301,13 @@ function run_migrations(): void
 // Initialize and migrate database on every run.
 initialize_database();
 run_migrations();
-
 // </database>
 
-/*
-------------------------------------------------------------------------------
-<helpers>
-------------------------------------------------------------------------------
-*/
 
+
+
+
+// <helpers>
 // Escapes special characters in a string for safe HTML output.
 function e(?string $string): string
 {
@@ -338,21 +343,13 @@ function redirect(string $url): void
     header("Location: " . $url);
     exit();
 }
-
 // </helpers>
 
-/*
-------------------------------------------------------------------------------
-<function>
-------------------------------------------------------------------------------
-*/
 
-/*
-****************************************
-<auth>
-****************************************
-*/
 
+
+
+// <authentication>
 // Clear stale OAuth sessions and data
 function clear_oauth_session(): void
 {
@@ -407,6 +404,15 @@ function get_user(): ?array
     return $_SESSION["user"] ?? null;
 }
 
+// </authentication>
+
+
+
+
+
+
+
+// <google-oauth>
 // Google OAuth - Configuration
 function get_google_config(): array
 {
@@ -582,24 +588,34 @@ function create_or_update_google_user(array $google_user): ?array
     }
 }
 
-// </auth>
+// </google-oauth>
+
+
+
+
 
 
 
 // </function>
 
 //------------------------------------------------------------------------------
-// <init variables for the view>
+// <view-initialization>
 //------------------------------------------------------------------------------
 $errors = [];
 $messages = [];
 $user = get_user();
 $pdo = get_db_connection();
-// </init variables for the view>
+// </view-initialization>
+
+
+
+
+
+
 
 /*
 ------------------------------------------------------------------------------
-<google session init>
+<oauth-flow>
 ------------------------------------------------------------------------------
 */
 
@@ -741,7 +757,7 @@ if (isset($_GET['logout']) || $path === 'logout') {
 
 /*
 ------------------------------------------------------------------------------
-<routes>
+<routing>
 ------------------------------------------------------------------------------
 */
 
@@ -766,10 +782,16 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
     redirect('/');
 }
 
-// </routes>
+// </routing>
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
-// <view>
+// <template>
 //------------------------------------------------------------------------------
 ?>
 <!DOCTYPE html>
@@ -973,5 +995,5 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
 </body>
 </html>
 <?php
-// </view>
+// </template>
 ?>
