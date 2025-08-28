@@ -805,216 +805,443 @@ $page_titles = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e($page_titles[$current_page] ?? 'MonoPHP'); ?></title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+        /* ========== BRAND COLORS (Primary = Deep Gold) ========== */
+        --primary: #B88400;                    /* Main CTAs, primary buttons, active nav items */
+        --primary-light: #D9A63A;              /* Hover states for primary elements (slightly lighter) */
+        --primary-dark: #7A5200;               /* Active/pressed states, focus rings (deeper gold) */
+        --primary-transparent: #B884001a;      /* Subtle highlights, selection backgrounds, badges */
+
+        --secondary: #2F2E3A;                  /* Charcoal: headings, body text, secondary buttons, links */
+        --secondary-light: #4A4756;            /* Hover for secondary elements */
+        --secondary-dark: #1E1D25;             /* Active states / strong text on light backgrounds */
+        --secondary-transparent: #2F2E3A1a;    /* Subtle charcoal overlays and borders */
+
+        --accent: #22C55E;                     /* Success states, positive indicators, completion badges */
+        --accent-light: #57D987;               /* Success hover states, positive highlights */
+        --accent-dark: #15803D;                /* Success active states, confirmed actions */
+        --accent-transparent: #22C55E1a;       /* Success backgrounds, positive status indicators */
+        /* ========== NEUTRAL COLORS ========== */
+        --white: #ffffff;                      /* Pure white backgrounds, text on dark backgrounds */
+        --white-transparent: #ffffffe6;        /* IMPROVED: More visible than e5 - overlay backgrounds, modals */
+        --black: #000000;                      /* Pure black (rarely used directly) */
+        --gray-50: #f9fafb;                    /* Subtle background variations, disabled states */
+        --gray-100: #f3f4f6;                   /* Light backgrounds, input backgrounds */
+        --gray-200: #e5e7eb;                   /* Borders, dividers, subtle separations */
+        --gray-300: #d1d5db;                   /* Disabled borders, placeholder text */
+        --gray-400: #9ca3af;                   /* Muted text, secondary icons */
+        --gray-500: #6b7280;                   /* Secondary text, less important content */
+        --gray-600: #4b5563;                   /* Primary text on light backgrounds */
+        --gray-700: #374151;                   /* Dark text, headings */
+        --gray-800: #1f2937;                   /* Very dark text, dark mode surfaces */
+        --gray-900: #111827;                   /* Primary text, main content */
+
+        /* ========== SEMANTIC COLORS ========== */
+        --success: #2da165;                    /* Success messages, checkmarks, completed states */
+        --warning: #fadc5b;                    /* Warning messages, caution indicators */
+        --error: #ee4f4f;                      /* Error messages, validation errors, destructive actions */
+        --info: var(--secondary);              /* Info messages, tips, neutral notifications */
+
+        /* ========== SURFACES ========== */
+        --bg-body: var(--white);               /* Main page background */
+        --bg-body-transparent: var(--white-transparent); /* Backdrop overlays, modal backgrounds */
+        --bg-surface: var(--gray-50);          /* Section backgrounds, page containers */
+        --bg-card: var(--white);               /* Card backgrounds, elevated content */
+        --bg-muted: var(--gray-100);           /* IMPROVED: Less harsh - sidebar backgrounds, disabled areas */
+        --bg-hover: var(--gray-50);            /* ADDED: Hover states for list items, buttons */
+        --bg-selected: var(--primary-transparent); /* ADDED: Selected states, active items */
+
+        /* ========== TEXT COLORS ========== */
+        --text-primary: var(--gray-900);       /* Main headings, primary content */
+        --text-secondary: var(--gray-600);     /* Subheadings, secondary content */
+        --text-muted: var(--gray-400);         /* Placeholder text, timestamps, metadata */
+        --text-inverse: var(--white);          /* Text on dark backgrounds */
+        --text-link: var(--secondary);         /* ADDED: Link colors, interactive text */
+        --text-link-hover: var(--primary); /* ADDED: Link hover states */
+        --text-link-active: var(--primary);        /* ADDED: Active navbar links, current page */
+
+        /* ========== BORDERS & DIVIDERS ========== */
+        --border-light: var(--gray-200);       /* Subtle borders, card edges */
+        --border-base: var(--gray-300);        /* IMPROVED: More visible - input borders, standard dividers */
+        --border-dark: var(--gray-600);        /* IMPROVED: Better contrast - emphasized borders */
+        --border-focus: var(--primary);        /* ADDED: Focus rings, active input borders */
+
+        /* ========== TYPOGRAPHY ========== */
+        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, Roboto, sans-serif; /* UI text, buttons, navigation */
+        --font-serif: "Crimson Pro", Georgia, serif; /* Editorial content, blog posts, testimonials */
+        --font-mono: "JetBrains Mono", Consolas, monospace; /* Code blocks, technical content, data */
+
+        /* Font Sizes */
+        --text-xs: 0.75rem;                    /* Small labels, captions, metadata */
+        --text-sm: 0.875rem;                   /* Form labels, secondary text */
+        --text-base: 1rem;                     /* Body text, paragraphs */
+        --text-lg: 1.125rem;                   /* Large body text, lead paragraphs */
+        --text-xl: 1.25rem;                    /* Small headings, card titles */
+        --text-2xl: 1.5rem;                    /* Section headings, modal titles */
+        --text-3xl: 1.875rem;                  /* Page headings, major sections */
+        --text-4xl: 2.25rem;                   /* Hero headings, landing page titles */
+        --text-5xl: 3rem;                      /* Large hero text, marketing headlines */
+        --text-6xl: 3.75rem;                   /* Extra large display text */
+
+        /* Font Weights */
+        --font-light: 300;                     /* Light emphasis, subtle text */
+        --font-normal: 400;                    /* Regular body text */
+        --font-medium: 500;                    /* Slightly emphasized text, navigation */
+        --font-semibold: 600;                  /* Buttons, form labels, subheadings */
+        --font-bold: 700;                      /* Headings, important emphasis */
+
+        /* Line Heights */
+        --leading-tight: 1.1;                 /* Headings, compact text */
+        --leading-normal: 1.5;                 /* Body text, readable content */
+        --leading-relaxed: 1.75;               /* Long-form content, blog posts */
+
+        /* ========== SPACING ========== */
+        --space-xs: 0.5rem;                    /* Tight spacing, icon gaps */
+        --space-sm: 0.75rem;                   /* Small padding, compact layouts */
+        --space-md: 1rem;                      /* Standard spacing, button padding */
+        --space-lg: 1.5rem;                    /* Section spacing, card padding */
+        --space-xl: 2rem;                      /* Large gaps, component margins */
+        --space-2xl: 3rem;                     /* Section separations */
+        --space-3xl: 4rem;                     /* Major layout spacing */
+        --space-4xl: 5rem;                     /* Hero sections, large separations */
+
+        /* ========== LAYOUT ========== */
+        --container-sm: 640px;                 /* Small screens, mobile-first content */
+        --container-md: 768px;                 /* Medium screens, tablet layouts */
+        --container-lg: 1024px;                /* Large screens, desktop content */
+        --container-xl: 1280px;                /* Extra large screens, wide layouts */
+        --container-2xl: 1536px;               /* Ultra wide screens, max content width */
+
+        /* Border Radius */
+        --radius-none: 0;                      /* ADDED: Sharp corners, technical interfaces */
+        --radius-sm: 0.25rem;                  /* Small elements, badges, tags */
+        --radius-md: 0.5rem;                   /* Buttons, form inputs, standard cards */
+        --radius-lg: 0.75rem;                  /* Large cards, modals */
+        --radius-xl: 1rem;                     /* Hero sections, prominent elements */
+        --radius-full: 9999px;                 /* Avatars, pills, circular buttons */
+
+        /* ========== SHADOWS ========== */
+        --shadow-sm: 0 1px 2px rgba(44, 69, 97, 0.12); /* IMPROVED: Proper shadow format - subtle elevation */
+        --shadow-md: 0 4px 6px rgba(44, 69, 97, 0.2);  /* IMPROVED: Cards, dropdowns */
+        --shadow-lg: 0 10px 15px rgba(44, 69, 97, 0.31); /* IMPROVED: Modals, large cards */
+        --shadow-xl: 0 20px 25px rgba(44, 69, 97, 0.4); /* ADDED: Maximum elevation */
+        --text-shadow: 0 1px 2px rgba(20, 16, 99, 0.15); /* IMPROVED: Text shadows on images */
+        --button-shadow: inset 0 2px 2px #fff3, inset 0 -2px 2px #0003, 0 2px 2px #00000040; /* IMPROVED: Button shadow */
+        --button-secondary-shadow: inset 0 2px 2px #fff3, inset 0 -2px 2px #0000001a, 0 2px 2px #00000040;
+
+        /* ========== TRANSITIONS ========== */
+        --transition-fast: 0.15s ease;         /* Micro-interactions, hover states */
+        --transition-base: 0.25s ease;         /* Standard animations, state changes */
+        --transition-slow: 0.35s ease;         /* Complex animations, layout changes */
+        --transition-bounce: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Playful animations */
+
+        /* ========== Z-INDEX ========== */
+        --z-base: 1;                           /* ADDED: Base layer reference */
+        --z-navbar: 50;                        /* Navigation bars, sticky headers */
+        --z-dropdown: 100;                     /* Dropdowns, select menus */
+        --z-modal: 200;                        /* Modals, overlays */
+        --z-tooltip: 300;                      /* Tooltips, highest priority elements */
+
+        /* ========== COMPONENT SPECIFIC ========== */
+        /* Form Elements */
+        --input-height: 2.5rem;                /* Standard input height */
+        --input-padding: var(--space-sm) var(--space-md); /* Input padding */
+
+        /* Buttons */
+        --btn-height: 2.5rem;                  /* Button height consistency */
+        --btn-padding: var(--space-sm) var(--space-lg); /* Button padding */
+
+        /* Cards */
+        --card-padding: var(--space-lg);       /* Standard card padding */
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9fa;
-            line-height: 1.6;
-            color: #333;
+            font-family: var(--font-sans);
+            margin: 0;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            padding-top: var(--space-lg);
         }
-
-        .navbar {
-            background: white;
-            border-bottom: 1px solid #e9ecef;
-            padding: 1rem 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #333;
-            text-decoration: none;
-        }
-
-        .nav-links {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #666;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            color: #333;
-        }
-
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-        }
-
-        .hero {
-            text-align: center;
-            padding: 4rem 0;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: #333;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 2rem;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            background: #333;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: #555;
-            transform: translateY(-1px);
-        }
-
-        .btn-google {
-            background: #4285f4;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-google:hover {
-            background: #3367d6;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
-        .content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .content h2 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: #333;
-        }
-
-        .content p {
-            margin-bottom: 1rem;
-            color: #666;
-        }
-
-        .user-profile {
-            text-align: center;
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .user-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            margin: 0 auto 1rem;
-            border: 3px solid #f0f0f0;
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 1rem;
-            border-radius: 5px;
-            margin-bottom: 1rem;
-            border: 1px solid #f5c6cb;
-        }
-
-        @media (max-width: 768px) {
-            .nav-container {
-                padding: 0 1rem;
-            }
-
-            .nav-links {
-                gap: 1rem;
-            }
-
-            .container {
-                padding: 2rem 1rem;
-            }
-
-            .hero h1 {
-                font-size: 2rem;
-            }
+            max-width: var(--container-2xl);
+            margin: var(--space-4xl) auto;
+            padding: var(--space-xl);
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">MonoPHP</a>
-            <ul class="nav-links">
-                <li><a href="/" class="<?php echo $current_page === 'home' ? 'active' : ''; ?>">Home</a></li>
-                <li><a href="/about" class="<?php echo $current_page === 'about' ? 'active' : ''; ?>">About</a></li>
-                <li><a href="/contact" class="<?php echo $current_page === 'contact' ? 'active' : ''; ?>">Contact</a></li>
-                <?php if ($is_logged_in): ?>
-                    <li><a href="/dashboard" class="<?php echo $current_page === 'dashboard' ? 'active' : ''; ?>">Dashboard</a></li>
-                    <li><a href="/logout" class="btn btn-danger">Logout</a></li>
-                <?php else: ?>
-                    <?php
-                    // Generate OAuth URL only if not already set in session
-                    if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
-                        $_SESSION['google_auth_url'] = get_google_auth_url();
+    <?php
+        if ($current_page == 'home' || 'about' || 'contact') {
+            ?>
+            <!-- <navbar> -->
+                <style>
+                    #navbar {
+                        position: fixed;
+                        top: var(--space-lg);
+                        left: 50%;
+                        transform: translateX(-50%);
+                        z-index: var(--z-navbar);
+                        width: calc(100% - 40px);
+                        max-width: var(--container-xl);
+                        background-color: var(--bg-card);
+                        padding: var(--space-xs) var(--space-xs);
+                        backdrop-filter: blur(10px);
+                        -webkit-backdrop-filter: blur(10px);
+                        box-shadow: var(--shadow-sm);
+                        border-radius: var(--radius-lg);
+                        border: 1px solid var(--border-light);
+                        align-items: center;
+                        display: flex;
+                        justify-content: space-between;
                     }
-                    ?>
-                    <li><a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
-                        <svg width="16" height="16" viewBox="0 0 24 24">
-                            <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        Login
-                    </a></li>
-                <?php endif; ?>
-            </ul>
-        </div>
-    </nav>
+
+                    #navbar .navbar-left {
+                        display: flex;
+                        align-items: center;
+                    }
+                    #navbar .navbar-left img {
+                        height: 32px;
+                        width: auto;
+                    }
+
+                    #navbar .navbar-center {
+                        display: flex; align-items: center; gap: var(--space-xs);
+                    }
+
+                    #navbar .menu-item {
+                        position: relative; display: flex; align-items: center;
+                    }
+                    #navbar a {
+                        color: var(--text-primary);
+                        text-decoration: none;
+                        padding: var(--space-sm) var(--space-md);
+                        font-weight: var(--font-medium);
+                        font-size: var(--text-sm);
+                        display: flex;
+                        align-items: center;
+                        gap: var(--space-xs);
+                    }
+                    #navbar a:hover {
+                        color: var(--text-link-hover);
+                    }
+                    #navbar a.active {
+                        color: var(--text-link-active);
+                    }
+                    #navbar a.dropdown::after {
+                        content: "▼";
+                        font-size: var(--text-xs);
+                        color: var(--text-primary);
+                    }
+                    #navbar a.dropdown:hover::after {
+                        color: var(--text-link-hover);
+                    }
+                    #navbar .dropdown-menu {
+                        position: absolute;
+                        top: 100%;
+                        left: 0;
+                        min-width: 220px;
+                        background: var(--bg-card);
+                        border-radius: var(--radius-md);
+                        padding: var(--space-sm) 0;
+                        box-shadow: var(--shadow-sm);
+                        border: 1px solid var(--border-light);
+                        opacity: 0;
+                        visibility: hidden;
+                        transform: translateY(-10px);
+                        transition: all var(--transition-base);
+                        z-index: var(--z-dropdown);
+                    }
+                    #navbar .menu-item:hover .dropdown-menu {
+                        opacity: 1;
+                        visibility: visible;
+                        transform: translateY(0);
+                    }
+                    #navbar .dropdown-menu a {
+                        padding: 12px 20px;
+                        font-size: var(--text-sm);
+                        color: var(--text-secondary);
+                        display: flex;
+                        align-items: center;
+                        gap: var(--space-sm);
+                        border-radius: 0;
+                    }
+                    #navbar .dropdown-menu a:hover {
+                        background-color: var(--bg-hover); color: var(--text-link-hover);
+                    }
+                    #navbar .dropdown-menu a .icon {
+                        width: 32px; height: 32px; border-radius: 8px;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 16px; flex-shrink: 0;
+                        background-color: var(--primary-transparent);
+                    }
+                    #navbar .dropdown-item-title {
+                        font-weight: var(--font-semibold);
+                    }
+                    #navbar .dropdown-item-description {
+                        font-size: var(--text-sm);
+                        color: var(--text-muted);
+                    }
+
+                    #navbar .navbar-right {
+                        display: flex; align-items: center; gap: var(--space-xs);
+                    }
+                    #navbar a.button {
+                        background: var(--primary);
+                        color: var(--white) !important;
+                        text-align: center;
+                        padding: 12px 24px; border-radius: var(--radius-md);
+                        font-weight: var(--font-bold); font-size: 14px;
+                        line-height: var(--leading-relaxed);
+                        padding: var(--space-xs) var(--space-md);
+                        /* box-shadow: 0 4px 14px 0 rgba(79, 124, 255, 0.3); */
+                        box-shadow: var(--button-shadow);
+                        transition: var(--transition-base);
+                        border: none;
+                    }
+                    #navbar a.button:hover {
+                        background: var(--primary-dark);
+                        color: var(--white) !important;
+                        transform: translateY(-2px);
+                        box-shadow: var(--button-shadow);
+                    }
+
+                    @media (max-width: 768px) {
+                      #navbar {
+                        flex-wrap: wrap;
+                        align-items: center;
+                        gap: var(--space-xs);
+                        /* Ensure horizontal margins on mobile */
+                        left: 0;
+                        right: 0;
+                        transform: none;
+                        width: auto;
+                        margin: 0 20px; /* keeps the floating look on mobile */
+                      }
+                      #navbar .navbar-left {
+                        order: 1;
+                      }
+                      #navbar .navbar-right {
+                        order: 2;
+                        margin-left: auto;
+                      }
+                      #navbar .navbar-center {
+                        order: 3;
+                        width: 100%;
+                        display: flex;
+                        justify-content: center;
+                        gap: var(--space-xs);
+                        margin-top: var(--space-xs);
+                      }
+                    }
+
+                    @media (max-width: 1024px) {
+                      #navbar {
+                        left: 0;
+                        right: 0;
+                        transform: none;
+                        width: auto;
+                        margin: 0 20px; /* horizontal margins on tablet */
+                      }
+                    }
+
+                    @media (max-width: 1280px) {
+                      #navbar {
+                        left: 0;
+                        right: 0;
+                        transform: none;
+                        width: auto;
+                        margin: 0 20px; /* horizontal margins on tablet */
+                      }
+                    }
+
+                    @media (max-width: 1536px) {
+                      #navbar {
+                        left: 0;
+                        right: 0;
+                        transform: none;
+                        width: auto;
+                        margin: 0 20px; /* horizontal margins on tablet */
+                      }
+                    }
+                </style>
+                <nav id="navbar">
+                    <div class="navbar-left">
+                        <a href="/">
+                            <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
+                        </a>
+                    </div>
+
+                    <div class="navbar-center">
+                        <div class="menu-item">
+                            <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="#" class="dropdown">Fitur</a>
+                            <div class="dropdown-menu">
+                                <a href="/home">
+                                    <div class="icon">🔍</div>
+                                    <div>
+                                        <div class="dropdown-item-title">All Features</div>
+                                        <div class="dropdown-item-description">Complete overview</div>
+                                    </div>
+                                </a>
+                                <a href="/about">
+                                    <div class="icon">🧩</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Components</div>
+                                        <div class="dropdown-item-description">Reusable building blocks</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">📋</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Templates</div>
+                                        <div class="dropdown-item-description">Ready-made designs</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">🔗</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Integrations</div>
+                                        <div class="dropdown-item-description">Connect your tools</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/">Artikel</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/">Kontak</a>
+                        </div>
+                    </div>
+
+                    <div class="navbar-right">
+                        <?php if ($is_logged_in): ?>
+                            <a href="/dashboard" class="button">Dashboard</a>
+                        <?php else: ?>
+                            <?php
+                                // Generate OAuth URL only if not already set in session
+                                if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
+                                    $_SESSION['google_auth_url'] = get_google_auth_url();
+                                }
+                            ?>
+                            <a href="<?= e($_SESSION['google_auth_url']); ?>">
+                                <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </nav>
+            <!-- </navbar> -->
+            <?php
+        } else {
+        echo "Dashboard";
+        }
+    ?>
+
+
+
+
 
     <!-- Main Content -->
     <div class="container">
@@ -1046,89 +1273,245 @@ $page_titles = [
         switch ($current_page) {
             case 'home':
                 ?>
-                <div class="hero">
-                    <h1>MonoPHP</h1>
-                    <p>Simple & Minimalist PHP Framework</p>
+                <!-- <hero section -->
+                <style>
+                    #hero-section {
+                        padding: var(--space-xl) 0 var(--space-xl);
+                        background: linear-gradient(135deg, var(--white) 0%, var(--gray-50) 100%);
+                        background-image: radial-gradient(circle, var(--bg-body-transparent), var(--bg-body)), url('/assets/images/background-square.svg');
+                        background-repeat: repeat;
+                        background-size: auto, 20px 20px;
+                        background-position: center, 0 0;
+                        margin-bottom: var(--space-4xl);
+                        width: 100vw;
+                        margin-left: calc(-50vw + 50%);
+                        position: relative;
+                        margin-top: var(--space-sm);
+                    }
+                    .hero-container {
+                        max-width: var(--container-2xl);
+                        margin: 0 auto;
+                        padding: 0 var(--space-xl);
+                        display: flex;
+                        align-items: center;
+                        gap: var(--space-lg);
+                    }
+                    .hero-content {
+                        flex: 1;
+                        text-align: left;
+                    }
+                    .hero-image {
+                        flex: 1;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                    }
+                    .hero-image img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 12px;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                    }
+                    .hero-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: var(--space-xs);
+                        font-size: var(--text-sm);
+                        color: var(--text-secondary);
+                        font-weight: var(--font-medium);
+                        margin-bottom: var(--space-md);
+                    }
+                    .hero-title {
+                        font-family: var(--font-serif);
+                        font-size: var(--text-6xl);
+                        font-weight: var(--font-bold);
+                        line-height: var(--leading-tight);
+                        margin: 0 0 var(--space-lg) 0;
+                        color: var(--text-primary);
+                        border: none;
+                        padding: 0;
+                    }
+                    .hero-title-highlight {
+                        color: var(--primary);
+                    }
+                    .hero-subtitle {
+                        font-size: var(--text-xl);
+                        line-height: var(--leading-relaxed);
+                        color: var(--text-secondary);
+                        margin: 0 0 var(--space-2xl) 0;
+                        max-width: var(--container-sm);
+                    }
+                    .hero-cta-buttons {
+                        display: flex;
+                        gap: var(--space-lg);
+                        justify-content: flex-start;
+                        margin-bottom: var(--space-2xl);
+                    }
+                    .hero-cta-primary {
+                        background: var(--primary);
+                        color: var(--white) !important;
+                        text-align: center; align-items: center;
+                        padding: 16px 32px; border-radius: var(--radius-md);
+                        font-weight: var(--font-bold); font-size: var(--text-base);
+                        box-shadow: var(--button-shadow);
+                        transition: var(--transition-base);
+                        border: none;
+                        display: inline-flex;
+                        cursor: pointer;
+                        text-decoration: none;
+                    }
+                    .hero-cta-secondary {
+                        background: var(--white);
+                        color: var(--text-secondary) !important;
+                        padding: 16px 32px; border-radius: var(--radius-md);
+                        font-weight: var(--font-semibold); font-size: var(--text-base);
+                        text-decoration: none;
+                        border: 2px solid var(--border-light);
+                        transition: var(--transition-base);
+                        display: inline-flex;
+                        align-items: center;
+                        box-shadow: var(--button-secondary-shadow);
+                    }
+                    .trusted-by-section {
+                        text-align: left;
+                    }
+                    .trusted-by-title {
+                        font-size: var(--text-sm);
+                        color: var(--text-muted);
+                        font-weight: var(--font-medium);
+                        letter-spacing: 0.05em;
+                        margin-bottom: var(--space-xl);
+                        text-transform: uppercase;
+                    }
+                    .trusted-by-logos {
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-start;
+                        gap: var(--space-2xl);
+                        flex-wrap: wrap;
+                    }
+                    .trusted-by-logo {
+                        height: 0.9rem;
+                        max-width: 100px;
+                        filter: grayscale(1) opacity(0.5);
+                        transition: filter 0.2s ease;
+                    }
+                    .trusted-by-logo:hover {
+                        filter: grayscale(0) opacity(1);
+                    }
 
-                    <?php if (!$is_logged_in): ?>
-                        <p>Build fast, secure web applications with minimal code.</p>
-                        <a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
-                            <svg width="16" height="16" viewBox="0 0 24 24">
-                                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                            Get Started with Google
-                        </a>
-                        <div style="margin-top: 1rem;">
-                            <small style="color: #666;">
-                                Having login issues? <a href="?clear_oauth=1" style="color: #666; text-decoration: underline;">Clear OAuth state</a>
-                            </small>
+                    @media (max-width: 768px) {
+                      .hero-title {
+                        font-size: clamp(2rem, 8vw, var(--text-4xl));
+                        line-height: var(--leading-tight);
+                      }
+                      .hero-subtitle {
+                        font-size: var(--text-lg);
+                        max-width: 100%;
+                      }
+                      .hero-cta-buttons {
+                        flex-direction: column;
+                        align-items: stretch;
+                      }
+                      .hero-cta-primary, .hero-cta-secondary {
+                        width: 80%;
+                        justify-content: center;
+                      }
+                    }
+
+                    @media (max-width: 1024px) {
+                      #hero-section {
+                        padding: var(--space-xl) 0 var(--space-2xl);
+                        margin-top: var(--space-3xl);
+                      }
+                      .hero-container {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: var(--space-xl);
+                      }
+                      .hero-content {
+                        order: 1;
+                        text-align: left;
+                      }
+                      .hero-image {
+                        order: 2;
+                        width: 100%;
+                        margin-top: var(--space-lg);
+                        justify-content: flex-start;
+                      }
+                      .hero-image img {
+                        max-width: 90%;
+                        height: auto;
+                      }
+                      .hero-cta-buttons {
+                        justify-content: flex-start;
+                        gap: var(--space-md);
+                      }
+                      .trusted-by-logos {
+                        justify-content: flex-start;
+                        gap: var(--space-lg);
+                      }
+                    }
+                </style>
+                <section id="hero-section">
+                    <div class="hero-container">
+                        <!-- Left Column: Content -->
+                        <div class="hero-content">
+                            <!-- Badge -->
+                            <div class="hero-badge">
+                                Your SaaS for Everyone
+                            </div>
+
+                            <!-- Main Heading -->
+                            <h1 class="hero-title">
+                                Tinggalkan <span class="hero-title-highlight">cara manual,</span><br>
+                                majukan usaha emas Anda.
+                            </h1>
+
+                            <!-- Subtitle -->
+                            <p class="hero-subtitle">
+                                Dari manajemen pelanggan, stock, harga, hingga pembukuan, <br>semua rapi di satu aplikasi.
+                            </p>
+
+                            <!-- CTA Buttons -->
+                            <div class="hero-cta-buttons">
+                                <a href="/register" class="hero-cta-primary">
+                                    Daftar Sekarang
+                                </a>
+                                <a href="/about" class="hero-cta-secondary">
+                                    Lihat Demo
+                                </a>
+                            </div>
+
+                            <!-- Trusted By Section -->
+                            <div class="trusted-by-section">
+                                <p class="trusted-by-title">
+                                    Trusted by
+                                </p>
+                                <div class="trusted-by-logos">
+                                    <img src="/assets/images/client-logo.svg" alt="Webflow" class="trusted-by-logo">
+                                    <img src="/assets/images/client-logo.svg" alt="Slack" class="trusted-by-logo">
+                                    <img src="/assets/images/client-logo.svg" alt="Finsweet" class="trusted-by-logo">
+                                    <img src="/assets/images/client-logo.svg" alt="Reddit" class="trusted-by-logo">
+                                    <img src="/assets/images/client-logo.svg" alt="Amazon" class="trusted-by-logo">
+                                    <img src="/assets/images/client-logo.svg" alt="Salesforce" class="trusted-by-logo">
+                                </div>
+                            </div>
                         </div>
-                    <?php else: ?>
-                        <p>Welcome back, <strong><?php echo e($_SESSION['user']['name']); ?></strong>!</p>
-                        <a href="/dashboard" class="btn">Go to Dashboard</a>
-                    <?php endif; ?>
-                </div>
 
-                <div class="content">
-                    <h2>Features</h2>
-                    <p>MonoPHP is designed for developers who want to build web applications quickly without the complexity of large frameworks.</p>
+                        <!-- Right Column: Hero Image -->
+                        <div class="hero-image">
+                            <img src="/assets/images/hero-image.webp" alt="Hero Image">
+                        </div>
+                    </div>
+                </section>
+                <!-- </hero section -->
 
-                </div>
-                <?php
-                break; ?>
+                <?php break; ?>
             <?php case 'about': ?>
                 <div class="content">
                     <h2>About MonoPHP</h2>
                     <p>MonoPHP is a minimalist PHP framework inspired by the philosophy of keeping things simple and effective. Built with modern web development practices in mind, it provides just enough structure to build robust applications without the bloat.</p>
-
-                    <h2>Philosophy</h2>
-                    <p>We believe in the power of simplicity. MonoPHP follows the principle that code should be:</p>
-
-                    <ul style="margin-bottom: 2rem;">
-                        <li><strong>Readable</strong> - Clean, self-documenting code</li>
-                        <li><strong>Maintainable</strong> - Easy to modify and extend</li>
-                        <li><strong>Secure</strong> - Built-in security best practices</li>
-                        <li><strong>Fast</strong> - Optimized for performance</li>
-                    </ul>
-
-                    <h2>Core Features</h2>
-
-                    <div style="display: grid; gap: 1.5rem; margin-bottom: 2rem;">
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 0.5rem; color: #333;">🛣️ Simple Routing</h3>
-                            <p style="margin: 0; color: #666;">Clean URL routing with easy-to-manage page structure. Add new pages by simply updating the switch statement.</p>
-                        </div>
-
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 0.5rem; color: #333;">🔐 OAuth Integration</h3>
-                            <p style="margin: 0; color: #666;">Built-in Google OAuth authentication with secure session management and CSRF protection.</p>
-                        </div>
-
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 0.5rem; color: #333;">🗄️ SQLite Database</h3>
-                            <p style="margin: 0; color: #666;">Lightweight SQLite database with automatic migrations and PDO for secure database operations.</p>
-                        </div>
-
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 0.5rem; color: #333;">⚡ Error Handling</h3>
-                            <p style="margin: 0; color: #666;">Comprehensive error handling with development-friendly debugging and production-ready logging.</p>
-                        </div>
-                    </div>
-
-                    <h2>Getting Started</h2>
-                    <p>MonoPHP is designed to get you up and running quickly:</p>
-
-                    <ol style="margin-bottom: 2rem;">
-                        <li>Clone the repository</li>
-                        <li>Copy <code>.env.example</code> to <code>.env</code> and configure your settings</li>
-                        <li>Set up your Google OAuth credentials</li>
-                        <li>Start building your application</li>
-                    </ol>
-
-                    <p>That's it! You're ready to build amazing web applications with MonoPHP.</p>
                 </div>
                 <?php
                 break;
