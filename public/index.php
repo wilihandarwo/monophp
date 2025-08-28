@@ -403,10 +403,7 @@ function get_user(): ?array
 {
     return $_SESSION["user"] ?? null;
 }
-
 // </authentication>
-
-
 
 
 
@@ -587,20 +584,13 @@ function create_or_update_google_user(array $google_user): ?array
         die('Database error: ' . $e->getMessage());
     }
 }
-
 // </google-oauth>
 
 
 
 
 
-
-
-// </function>
-
-//------------------------------------------------------------------------------
 // <view-initialization>
-//------------------------------------------------------------------------------
 $errors = [];
 $messages = [];
 $user = get_user();
@@ -612,13 +602,7 @@ $pdo = get_db_connection();
 
 
 
-
-/*
-------------------------------------------------------------------------------
-<oauth-flow>
-------------------------------------------------------------------------------
-*/
-
+// <oauth-flow>
 $request_uri = $_SERVER['REQUEST_URI'];
 $path = parse_url($request_uri, PHP_URL_PATH);
 $path = trim($path, '/');
@@ -752,15 +736,13 @@ if (isset($_GET['logout']) || $path === 'logout') {
     header('Location: /?t=' . time());
     exit;
 }
+// </oauth-flow>
 
-// </google session init>
 
-/*
-------------------------------------------------------------------------------
-<routing>
-------------------------------------------------------------------------------
-*/
 
+
+
+// <routing>
 // Determine current page
 if ($path === 'auth/google/callback') {
     $current_page = 'oauth_callback';
@@ -781,18 +763,12 @@ $is_logged_in = is_logged_in();
 if ($current_page === 'dashboard' && !$is_logged_in) {
     redirect('/');
 }
-
 // </routing>
 
 
 
 
 
-
-
-//------------------------------------------------------------------------------
-// <template>
-//------------------------------------------------------------------------------
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -994,6 +970,3 @@ if ($current_page === 'dashboard' && !$is_logged_in) {
     </div>
 </body>
 </html>
-<?php
-// </template>
-?>
