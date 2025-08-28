@@ -769,6 +769,7 @@ $pages = [
     'about' => 'about',
     'contact' => 'contact',
     'dashboard' => 'dashboard',
+    'settings' => 'settings',
     'auth/google/callback' => 'oauth_callback',
     'logout' => 'logout'
 ];
@@ -789,7 +790,8 @@ $page_titles = [
     'home' => 'MonoPHP',
     'about' => 'About - MonoPHP',
     'contact' => 'Contact - MonoPHP',
-    'dashboard' => 'Dashboard - MonoPHP'
+    'dashboard' => 'Dashboard - MonoPHP',
+    'settings' => 'Settings - MonoPHP'
 ];
 // </routing>
 
@@ -970,6 +972,12 @@ $page_titles = [
     </style>
 </head>
 <body>
+
+
+
+
+
+<!-- <navigation>  -->
     <?php
         if ($current_page == 'home' || $current_page == 'about' || $current_page == 'contact') {
             ?>
@@ -1164,6 +1172,7 @@ $page_titles = [
                       }
                     }
                 </style>
+
                 <nav id="navbar">
                     <div class="navbar-left">
                         <a href="/">
@@ -1237,11 +1246,10 @@ $page_titles = [
         } else {
         ?>
         
-                            <!-- <dashboard> -->
+            <!-- <sidebar> -->
                 <style>
                     .dashboard-layout {
                         display: flex;
-                        min-height: 100vh;
                         background: #f8f9fa;
                     }
 
@@ -1306,6 +1314,16 @@ $page_titles = [
                         flex: 1;
                         margin-left: 250px;
                         padding: 2rem;
+                        position: relative;
+                        top: 0;
+                        min-height: 100vh;
+                    }
+
+                    /* Override container margin for dashboard layout */
+                    .container {
+                        margin: 0 auto !important;
+                        padding: 0 !important;
+                        max-width: none !important;
                     }
 
                     .content-header {
@@ -1374,11 +1392,12 @@ $page_titles = [
                     </div>
 
                 </div>
-                <!-- </dashboard> -->
+            <!-- </sidebar> -->
 
         <?php 
         }
     ?>
+<!-- </navigation>  -->
 
 
 
@@ -1759,7 +1778,34 @@ $page_titles = [
 
                 <?php
                 break;
+            // <settings>
+            case 'settings':
+                // Ensure user is logged in (this check is also done in routing)
+                if (!$is_logged_in) {
+                    redirect('/');
+                }
 
+                $user = $_SESSION['user'];
+                ?>
+
+                <!-- Main Content -->
+                <div class="main-content">
+                    <div class="content-header">
+                        <h2>Settings, <?= e($user['name']); ?>!</h2>
+                        <p>Here's what's happening with your account today.</p>
+                    </div>
+                    <div class="content-body">
+                        <!-- Content will go here -->
+                        <div class="placeholder-content">
+                            <p>Main content area - ready for your content!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <?php
+                break;
+                // </settings>
+                
             default:
                 // Default to home page
                 ?>
