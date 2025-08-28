@@ -971,7 +971,7 @@ $page_titles = [
 </head>
 <body>
     <?php
-        if ($current_page == 'home' || 'about' || 'contact') {
+        if ($current_page == 'home' || $current_page == 'about' || $current_page == 'contact') {
             ?>
             <!-- <navbar> -->
                 <style>
@@ -1235,7 +1235,148 @@ $page_titles = [
             <!-- </navbar> -->
             <?php
         } else {
-        echo "Dashboard";
+        ?>
+        
+                            <!-- <dashboard> -->
+                <style>
+                    .dashboard-layout {
+                        display: flex;
+                        min-height: 100vh;
+                        background: #f8f9fa;
+                    }
+
+                    .sidebar {
+                        width: 250px;
+                        background: #343a40;
+                        color: white;
+                        display: flex;
+                        flex-direction: column;
+                        position: fixed;
+                        height: 100vh;
+                        left: 0;
+                        top: 0;
+                        z-index: 1000;
+                    }
+
+                    .sidebar-header {
+                        padding: 1.5rem;
+                        border-bottom: 1px solid #495057;
+                    }
+
+                    .sidebar-header h3 {
+                        margin: 0;
+                        color: white;
+                    }
+
+                    .sidebar-nav {
+                        flex: 1;
+                        padding: 1rem 0;
+                    }
+
+                    .sidebar-nav ul {
+                        list-style: none;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    .sidebar-nav li {
+                        margin: 0;
+                    }
+
+                    .nav-link {
+                        display: block;
+                        padding: 0.75rem 1.5rem;
+                        color: #adb5bd;
+                        text-decoration: none;
+                        transition: all 0.3s ease;
+                    }
+
+                    .nav-link:hover,
+                    .nav-link.active {
+                        background: #495057;
+                        color: white;
+                    }
+
+                    .sidebar-footer {
+                        padding: 1.5rem;
+                        border-top: 1px solid #495057;
+                    }
+
+                    .main-content {
+                        flex: 1;
+                        margin-left: 250px;
+                        padding: 2rem;
+                    }
+
+                    .content-header {
+                        margin-bottom: 2rem;
+                    }
+
+                    .content-header h2 {
+                        margin: 0 0 0.5rem 0;
+                        color: #333;
+                    }
+
+                    .content-header p {
+                        margin: 0;
+                        color: #666;
+                    }
+
+                    .content-body {
+                        background: white;
+                        padding: 2rem;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    }
+
+                    .placeholder-content {
+                        text-align: center;
+                        padding: 3rem;
+                        color: #666;
+                    }
+
+                    @media (max-width: 768px) {
+                        .sidebar {
+                            width: 100%;
+                            height: auto;
+                            position: relative;
+                        }
+                        
+                        .main-content {
+                            margin-left: 0;
+                            padding: 1rem;
+                        }
+                        
+                        .dashboard-layout {
+                            flex-direction: column;
+                        }
+                    }
+                </style>
+
+                <div class="dashboard-layout">
+                    <!-- Sidebar -->
+                    <div class="sidebar">
+                        <div class="sidebar-header">
+                            <h3>Dashboard</h3>
+                        </div>
+                        <nav class="sidebar-nav">
+                            <ul>
+                                <li><a href="#" class="nav-link active">📊 Overview</a></li>
+                                <li><a href="#" class="nav-link">👤 Profile</a></li>
+                                <li><a href="#" class="nav-link">⚙️ Settings</a></li>
+                                <li><a href="#" class="nav-link">📈 Analytics</a></li>
+                                <li><a href="#" class="nav-link">📝 Reports</a></li>
+                            </ul>
+                        </nav>
+                        <div class="sidebar-footer">
+                            <a href="/logout" class="btn btn-danger">Logout</a>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- </dashboard> -->
+
+        <?php 
         }
     ?>
 
@@ -1602,89 +1743,20 @@ $page_titles = [
                 $user = $_SESSION['user'];
                 ?>
 
-                <div class="content">
-                    <h2>Dashboard</h2>
-                    <p>Welcome to your dashboard, <?php echo e($user['name']); ?>!</p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 2rem;">
-                        <!-- User Profile Card -->
-                        <div class="user-profile">
-                            <img src="<?php echo e($user['picture']); ?>" alt="Profile Picture" class="user-avatar">
-                            <h3 style="margin-bottom: 0.5rem; color: #333;"><?php echo e($user['name']); ?></h3>
-                            <p style="margin-bottom: 1rem; color: #666;"><?php echo e($user['email']); ?></p>
-                            <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #888;">
-                                Role: <span style="background: #e9ecef; padding: 0.25rem 0.5rem; border-radius: 3px;"><?php echo e($user['role'] ?? 'user'); ?></span>
-                            </p>
-                            <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #888;">
-                                Member since: <?php echo date('M j, Y', strtotime($user['created_at'])); ?>
-                            </p>
-                            <a href="/logout" class="btn btn-danger" style="width: 100%;">Logout</a>
-                        </div>
-
-                        <!-- Dashboard Content -->
-                        <div>
-                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-                                <h3 style="margin-bottom: 1rem; color: #333;">📊 Quick Stats</h3>
-
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
-                                        <div style="font-size: 2rem; font-weight: 700; color: #333;">1</div>
-                                        <div style="font-size: 0.9rem; color: #666;">Active Sessions</div>
-                                    </div>
-
-                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
-                                        <div style="font-size: 2rem; font-weight: 700; color: #333;"><?php echo date('j'); ?></div>
-                                        <div style="font-size: 0.9rem; color: #666;">Days This Month</div>
-                                    </div>
-
-                                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
-                                        <div style="font-size: 2rem; font-weight: 700; color: #333;">✓</div>
-                                        <div style="font-size: 0.9rem; color: #666;">Account Verified</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-                                <h3 style="margin-bottom: 1rem; color: #333;">🚀 Quick Actions</h3>
-
-                                <div style="display: grid; gap: 1rem;">
-                                    <a href="/" class="btn" style="text-decoration: none; text-align: center;">🏠 Go to Homepage</a>
-                                    <a href="/about" class="btn" style="text-decoration: none; text-align: center; background: #6c757d;">📖 Learn More About MonoPHP</a>
-                                    <a href="/contact" class="btn" style="text-decoration: none; text-align: center; background: #17a2b8;">💬 Contact Support</a>
-                                </div>
-                            </div>
-
-                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                <h3 style="margin-bottom: 1rem; color: #333;">📝 Recent Activity</h3>
-
-                                <div style="border-left: 3px solid #e9ecef; padding-left: 1rem;">
-                                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f8f9fa;">
-                                        <div style="font-weight: 500; color: #333;">Logged in successfully</div>
-                                        <div style="font-size: 0.9rem; color: #666;">Today at <?php echo date('g:i A'); ?></div>
-                                    </div>
-
-                                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f8f9fa;">
-                                        <div style="font-weight: 500; color: #333;">Account created</div>
-                                        <div style="font-size: 0.9rem; color: #666;"><?php echo date('M j, Y \a\t g:i A', strtotime($user['created_at'])); ?></div>
-                                    </div>
-
-                                    <div>
-                                        <div style="font-weight: 500; color: #333;">Welcome to MonoPHP!</div>
-                                        <div style="font-size: 0.9rem; color: #666;">Start exploring the features</div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Main Content -->
+                <div class="main-content">
+                    <div class="content-header">
+                        <h2>Welcome, <?= e($user['name']); ?>!</h2>
+                        <p>Here's what's happening with your account today.</p>
+                    </div>
+                    <div class="content-body">
+                        <!-- Content will go here -->
+                        <div class="placeholder-content">
+                            <p>Main content area - ready for your content!</p>
                         </div>
                     </div>
                 </div>
 
-                <style>
-                @media (max-width: 768px) {
-                    .content > div {
-                        grid-template-columns: 1fr !important;
-                    }
-                }
-                </style>
                 <?php
                 break;
 
