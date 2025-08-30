@@ -691,8 +691,16 @@
             'auth/google/callback' => 'oauth_callback',
             'logout' => 'logout'
         ];
+    // Define pages category
+        $public_pages = ['home', 'about', 'contact'];
+        $dashboard_pages = ['dashboard', 'settings'];
+        $other_pages = ['auth/google/callback', 'logout'];
     // Determine current page
         $current_page = $pages[$path] ?? 'home';
+    // Check category of the current page
+        $is_public_page = in_array($current_page, $public_pages);
+        $is_dashboard_page = in_array($current_page, $dashboard_pages);
+        $is_other_page = in_array($current_page, $other_pages);
     // Check if user is logged in
         $is_logged_in = is_logged_in();
     // Protect dashboard page
@@ -882,422 +890,278 @@
     </style>
 </head>
 <body>
-<!-- <navigation>  -->
-    <!--// PHP IF Start-->
-        <?php if ($current_page == 'home' || $current_page == 'about' || $current_page == 'contact') { ?>
-    <!--// Navbar -->
-        <!--// Style-->
-            <style>
-            #navbar {
-                position: fixed;
-                top: var(--space-lg);
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: var(--z-navbar);
-                width: calc(100% - 40px);
-                max-width: var(--container-xl);
-                background-color: var(--bg-card);
-                padding: var(--space-xs) var(--space-xs);
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                box-shadow: var(--shadow-sm);
-                border-radius: var(--radius-lg);
-                border: 1px solid var(--border-light);
-                align-items: center;
-                display: flex;
-                justify-content: space-between;
-            }
 
-            #navbar .navbar-left {
-                display: flex;
-                align-items: center;
-            }
-            #navbar .navbar-left img {
-                height: 32px;
-                width: auto;
-            }
-
-            #navbar .navbar-center {
-                display: flex; align-items: center; gap: var(--space-xs);
-            }
-
-            #navbar .menu-item {
-                position: relative; display: flex; align-items: center;
-            }
-            #navbar a {
-                color: var(--text-primary);
-                text-decoration: none;
-                padding: var(--space-sm) var(--space-md);
-                font-weight: var(--font-medium);
-                font-size: var(--text-sm);
-                display: flex;
-                align-items: center;
-                gap: var(--space-xs);
-            }
-            #navbar a:hover {
-                color: var(--text-link-hover);
-            }
-            #navbar a.active {
-                color: var(--text-link-active);
-            }
-            #navbar a.dropdown::after {
-                content: "▼";
-                font-size: var(--text-xs);
-                color: var(--text-primary);
-            }
-            #navbar a.dropdown:hover::after {
-                color: var(--text-link-hover);
-            }
-            #navbar .dropdown-menu {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                min-width: 220px;
-                background: var(--bg-card);
-                border-radius: var(--radius-md);
-                padding: var(--space-sm) 0;
-                box-shadow: var(--shadow-sm);
-                border: 1px solid var(--border-light);
-                opacity: 0;
-                visibility: hidden;
-                transform: translateY(-10px);
-                transition: all var(--transition-base);
-                z-index: var(--z-dropdown);
-            }
-            #navbar .menu-item:hover .dropdown-menu {
-                opacity: 1;
-                visibility: visible;
-                transform: translateY(0);
-            }
-            #navbar .dropdown-menu a {
-                padding: 12px 20px;
-                font-size: var(--text-sm);
-                color: var(--text-secondary);
-                display: flex;
-                align-items: center;
-                gap: var(--space-sm);
-                border-radius: 0;
-            }
-            #navbar .dropdown-menu a:hover {
-                background-color: var(--bg-hover); color: var(--text-link-hover);
-            }
-            #navbar .dropdown-menu a .icon {
-                width: 32px; height: 32px; border-radius: 8px;
-                display: flex; align-items: center; justify-content: center;
-                font-size: 16px; flex-shrink: 0;
-                background-color: var(--primary-transparent);
-            }
-            #navbar .dropdown-item-title {
-                font-weight: var(--font-semibold);
-            }
-            #navbar .dropdown-item-description {
-                font-size: var(--text-sm);
-                color: var(--text-muted);
-            }
-
-            #navbar .navbar-right {
-                display: flex; align-items: center; gap: var(--space-xs);
-            }
-            #navbar a.button {
-                background: var(--primary);
-                color: var(--white) !important;
-                text-align: center;
-                padding: 12px 24px; border-radius: var(--radius-md);
-                font-weight: var(--font-bold); font-size: 14px;
-                line-height: var(--leading-relaxed);
-                padding: var(--space-xs) var(--space-md);
-                /* box-shadow: 0 4px 14px 0 rgba(79, 124, 255, 0.3); */
-                box-shadow: var(--button-shadow);
-                transition: var(--transition-base);
-                border: none;
-            }
-            #navbar a.button:hover {
-                background: var(--primary-dark);
-                color: var(--white) !important;
-                transform: translateY(-2px);
-                box-shadow: var(--button-shadow);
-            }
-
-            @media (max-width: 768px) {
+<!--LAYOUT: public pages-->
+<?php if ($is_public_page) { ?>
+<!-- <public-container>  -->
+    <div class="public-container" style="max-width: var(--container-2xl); margin: var(--space-4xl) auto; padding: var(--space-xl);">
+    <!--Navbar-->
+        <!--// Navbar Style-->
+                <style>
                 #navbar {
-                flex-wrap: wrap;
-                align-items: center;
-                gap: var(--space-xs);
-                /* Ensure horizontal margins on mobile */
-                left: 0;
-                right: 0;
-                transform: none;
-                width: auto;
-                margin: 0 20px; /* keeps the floating look on mobile */
+                    position: fixed;
+                    top: var(--space-lg);
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: var(--z-navbar);
+                    width: calc(100% - 40px);
+                    max-width: var(--container-xl);
+                    background-color: var(--bg-card);
+                    padding: var(--space-xs) var(--space-xs);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    box-shadow: var(--shadow-sm);
+                    border-radius: var(--radius-lg);
+                    border: 1px solid var(--border-light);
+                    align-items: center;
+                    display: flex;
+                    justify-content: space-between;
                 }
+
                 #navbar .navbar-left {
-                order: 1;
+                    display: flex;
+                    align-items: center;
                 }
-                #navbar .navbar-right {
-                order: 2;
-                margin-left: auto;
+                #navbar .navbar-left img {
+                    height: 32px;
+                    width: auto;
                 }
+
                 #navbar .navbar-center {
-                order: 3;
-                width: 100%;
-                display: flex;
-                justify-content: center;
-                gap: var(--space-xs);
-                margin-top: var(--space-xs);
+                    display: flex; align-items: center; gap: var(--space-xs);
                 }
-            }
 
-            @media (max-width: 1024px) {
-                #navbar {
-                left: 0;
-                right: 0;
-                transform: none;
-                width: auto;
-                margin: 0 20px; /* horizontal margins on tablet */
+                #navbar .menu-item {
+                    position: relative; display: flex; align-items: center;
                 }
-            }
-
-            @media (max-width: 1280px) {
-                #navbar {
-                left: 0;
-                right: 0;
-                transform: none;
-                width: auto;
-                margin: 0 20px; /* horizontal margins on tablet */
+                #navbar a {
+                    color: var(--text-primary);
+                    text-decoration: none;
+                    padding: var(--space-sm) var(--space-md);
+                    font-weight: var(--font-medium);
+                    font-size: var(--text-sm);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-xs);
                 }
-            }
-
-            @media (max-width: 1536px) {
-                #navbar {
-                left: 0;
-                right: 0;
-                transform: none;
-                width: auto;
-                margin: 0 20px; /* horizontal margins on tablet */
+                #navbar a:hover {
+                    color: var(--text-link-hover);
                 }
-            }
-            </style>
-        <!--// HTML-->
-            <nav id="navbar">
-                <div class="navbar-left">
-                    <a href="/">
-                        <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
-                    </a>
-                </div>
+                #navbar a.active {
+                    color: var(--text-link-active);
+                }
+                #navbar a.dropdown::after {
+                    content: "▼";
+                    font-size: var(--text-xs);
+                    color: var(--text-primary);
+                }
+                #navbar a.dropdown:hover::after {
+                    color: var(--text-link-hover);
+                }
+                #navbar .dropdown-menu {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    min-width: 220px;
+                    background: var(--bg-card);
+                    border-radius: var(--radius-md);
+                    padding: var(--space-sm) 0;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--border-light);
+                    opacity: 0;
+                    visibility: hidden;
+                    transform: translateY(-10px);
+                    transition: all var(--transition-base);
+                    z-index: var(--z-dropdown);
+                }
+                #navbar .menu-item:hover .dropdown-menu {
+                    opacity: 1;
+                    visibility: visible;
+                    transform: translateY(0);
+                }
+                #navbar .dropdown-menu a {
+                    padding: 12px 20px;
+                    font-size: var(--text-sm);
+                    color: var(--text-secondary);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-sm);
+                    border-radius: 0;
+                }
+                #navbar .dropdown-menu a:hover {
+                    background-color: var(--bg-hover); color: var(--text-link-hover);
+                }
+                #navbar .dropdown-menu a .icon {
+                    width: 32px; height: 32px; border-radius: 8px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 16px; flex-shrink: 0;
+                    background-color: var(--primary-transparent);
+                }
+                #navbar .dropdown-item-title {
+                    font-weight: var(--font-semibold);
+                }
+                #navbar .dropdown-item-description {
+                    font-size: var(--text-sm);
+                    color: var(--text-muted);
+                }
 
-                <div class="navbar-center">
-                    <div class="menu-item">
-                        <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
+                #navbar .navbar-right {
+                    display: flex; align-items: center; gap: var(--space-xs);
+                }
+                #navbar a.button {
+                    background: var(--primary);
+                    color: var(--white) !important;
+                    text-align: center;
+                    padding: 12px 24px; border-radius: var(--radius-md);
+                    font-weight: var(--font-bold); font-size: 14px;
+                    line-height: var(--leading-relaxed);
+                    padding: var(--space-xs) var(--space-md);
+                    /* box-shadow: 0 4px 14px 0 rgba(79, 124, 255, 0.3); */
+                    box-shadow: var(--button-shadow);
+                    transition: var(--transition-base);
+                    border: none;
+                }
+                #navbar a.button:hover {
+                    background: var(--primary-dark);
+                    color: var(--white) !important;
+                    transform: translateY(-2px);
+                    box-shadow: var(--button-shadow);
+                }
+
+                @media (max-width: 768px) {
+                    #navbar {
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--space-xs);
+                    /* Ensure horizontal margins on mobile */
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px; /* keeps the floating look on mobile */
+                    }
+                    #navbar .navbar-left {
+                    order: 1;
+                    }
+                    #navbar .navbar-right {
+                    order: 2;
+                    margin-left: auto;
+                    }
+                    #navbar .navbar-center {
+                    order: 3;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    gap: var(--space-xs);
+                    margin-top: var(--space-xs);
+                    }
+                }
+
+                @media (max-width: 1024px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px; /* horizontal margins on tablet */
+                    }
+                }
+
+                @media (max-width: 1280px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px; /* horizontal margins on tablet */
+                    }
+                }
+
+                @media (max-width: 1536px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px; /* horizontal margins on tablet */
+                    }
+                }
+                </style>
+        <!--// Navbar HTML-->
+                <nav id="navbar">
+                    <div class="navbar-left">
+                        <a href="/">
+                            <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
+                        </a>
                     </div>
-                    <div class="menu-item">
-                        <a href="#" class="dropdown">Fitur</a>
-                        <div class="dropdown-menu">
-                            <a href="/home">
-                                <div class="icon">🔍</div>
-                                <div>
-                                    <div class="dropdown-item-title">All Features</div>
-                                    <div class="dropdown-item-description">Complete overview</div>
-                                </div>
-                            </a>
-                            <a href="/about">
-                                <div class="icon">🧩</div>
-                                <div>
-                                    <div class="dropdown-item-title">Components</div>
-                                    <div class="dropdown-item-description">Reusable building blocks</div>
-                                </div>
-                            </a>
-                            <a href="#">
-                                <div class="icon">📋</div>
-                                <div>
-                                    <div class="dropdown-item-title">Templates</div>
-                                    <div class="dropdown-item-description">Ready-made designs</div>
-                                </div>
-                            </a>
-                            <a href="#">
-                                <div class="icon">🔗</div>
-                                <div>
-                                    <div class="dropdown-item-title">Integrations</div>
-                                    <div class="dropdown-item-description">Connect your tools</div>
-                                </div>
-                            </a>
+
+                    <div class="navbar-center">
+                        <div class="menu-item">
+                            <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="#" class="dropdown">Fitur</a>
+                            <div class="dropdown-menu">
+                                <a href="/home">
+                                    <div class="icon">🔍</div>
+                                    <div>
+                                        <div class="dropdown-item-title">All Features</div>
+                                        <div class="dropdown-item-description">Complete overview</div>
+                                    </div>
+                                </a>
+                                <a href="/about">
+                                    <div class="icon">🧩</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Components</div>
+                                        <div class="dropdown-item-description">Reusable building blocks</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">📋</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Templates</div>
+                                        <div class="dropdown-item-description">Ready-made designs</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">🔗</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Integrations</div>
+                                        <div class="dropdown-item-description">Connect your tools</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/about" class="<?= $current_page === 'about' ? 'active' : ''; ?>">About</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/contact" class="<?= $current_page === 'contact' ? 'active' : ''; ?>">Contact</a>
                         </div>
                     </div>
-                    <div class="menu-item">
-                        <a href="/">Artikel</a>
+
+                    <div class="navbar-right">
+                        <?php if ($is_logged_in): ?>
+                            <a href="/dashboard" class="button">Dashboard</a>
+                        <?php else: ?>
+                            <?php
+                                // Generate OAuth URL only if not already set in session
+                                if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
+                                    $_SESSION['google_auth_url'] = get_google_auth_url();
+                                }
+                            ?>
+                            <a href="<?= e($_SESSION['google_auth_url']); ?>">
+                                <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
+                            </a>
+                        <?php endif; ?>
                     </div>
-                    <div class="menu-item">
-                        <a href="/">Kontak</a>
-                    </div>
-                </div>
-
-                <div class="navbar-right">
-                    <?php if ($is_logged_in): ?>
-                        <a href="/dashboard" class="button">Dashboard</a>
-                    <?php else: ?>
-                        <?php
-                            // Generate OAuth URL only if not already set in session
-                            if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
-                                $_SESSION['google_auth_url'] = get_google_auth_url();
-                            }
-                        ?>
-                        <a href="<?= e($_SESSION['google_auth_url']); ?>">
-                            <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </nav>
-    <!--// PHP IF Else-->
-        <?php } else { ?>
-    <!--// Sidebar-->
-        <!--// Style-->
-            <style>
-            .sidebar {
-                width: 250px;
-                background: #f8f9fa;
-                color: #333;
-                display: flex;
-                flex-direction: column;
-                position: fixed;
-                height: 100vh;
-                left: 0;
-                top: 0;
-                z-index: 1000;
-            }
-
-            .sidebar-header {
-                padding: 2rem 1.5rem 1rem 1.5rem;
-                border-bottom: none;
-            }
-
-            .sidebar-header h3 {
-                margin: 0;
-                color: #333;
-                font-weight: 600;
-                font-size: 1.25rem;
-            }
-
-            .sidebar-nav {
-                flex: 1;
-                padding: 1rem 0;
-            }
-
-            .sidebar-nav ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-            }
-
-            .sidebar-nav li {
-                margin: 0.25rem 0;
-            }
-
-            .nav-link {
-                display: flex;
-                align-items: center;
-                padding: 0.75rem 1.5rem;
-                color: #6c757d;
-                text-decoration: none;
-                transition: all 0.2s ease;
-                border-radius: 0 25px 25px 0;
-                margin-right: 1rem;
-                font-weight: 500;
-            }
-
-            .nav-link:hover {
-                background: #e9ecef;
-                color: #495057;
-            }
-
-            .nav-link.active {
-                background: #007bff;
-                color: white;
-            }
-
-            .nav-link .nav-icon {
-                margin-right: 0.75rem;
-                font-size: 1.1rem;
-            }
-
-            .sidebar-footer {
-                padding: 1.5rem;
-                border-top: 1px solid #e9ecef;
-            }
-
-            .sidebar-footer .btn {
-                width: 100%;
-                padding: 0.75rem;
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-                font-weight: 500;
-                transition: background 0.2s ease;
-            }
-
-            .sidebar-footer .btn:hover {
-                background: #c82333;
-            }
-            </style>
-        <!--// HTML-->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <h3>Dashboard</h3>
-                </div>
-                <nav class="sidebar-nav">
-                    <ul>
-                        <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
-                    </ul>
                 </nav>
-                <div class="sidebar-footer">
-                    <a href="/logout" class="btn btn-danger">Logout</a>
-                </div>
-            </div>
-    <!--PHP IF End-->
-        <?php } ?>
-<!-- </navigation>  -->
-
-<!-- <public-container>  -->
-    <div class="public-container">
-        <!--Navbar-->
-        <!--Public Page-->
-            <!--Home Page-->
-            <!--About Page-->
-            <!--Contact Page-->
-            <!--Blog Page-->
-            <!--404 Page-->
-        <!--Footer-->
-    </div>
-<!-- </public-container>  -->
-
-<!-- <dashboard-container>  -->
-    <div class="dashboard-container">
-
-    </div>
-<!-- </dashboard-container>  -->
-
-
-
-    <div class="container">
-
-
-        <?php
-        // Page content based on current page
-        switch ($current_page) {
-            case 'home':
-                ?>
-                <!-- <hero section -->
-                <style>
+    <!--Public Page-->
+        <!--Home Page-->
+            <?php switch ($current_page) { case 'home': ?>
+            <!--Hero section-->
+                <!--Hero style-->
+                    <style>
                     #hero-section {
                         padding: var(--space-xl) 0 var(--space-xl);
                         background: linear-gradient(135deg, var(--white) 0%, var(--gray-50) 100%);
@@ -1424,124 +1288,115 @@
                     }
 
                     @media (max-width: 768px) {
-                      .hero-title {
-                        font-size: clamp(2rem, 8vw, var(--text-4xl));
-                        line-height: var(--leading-tight);
-                      }
-                      .hero-subtitle {
-                        font-size: var(--text-lg);
-                        max-width: 100%;
-                      }
-                      .hero-cta-buttons {
-                        flex-direction: column;
-                        align-items: stretch;
-                      }
-                      .hero-cta-primary, .hero-cta-secondary {
-                        width: 80%;
-                        justify-content: center;
-                      }
+                        .hero-title {
+                            font-size: clamp(2rem, 8vw, var(--text-4xl));
+                            line-height: var(--leading-tight);
+                        }
+                        .hero-subtitle {
+                            font-size: var(--text-lg);
+                            max-width: 100%;
+                        }
+                        .hero-cta-buttons {
+                            flex-direction: column;
+                            align-items: stretch;
+                        }
+                        .hero-cta-primary, .hero-cta-secondary {
+                            width: 80%;
+                            justify-content: center;
+                        }
                     }
 
                     @media (max-width: 1024px) {
-                      #hero-section {
-                        padding: var(--space-xl) 0 var(--space-2xl);
-                        margin-top: var(--space-3xl);
-                      }
-                      .hero-container {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: var(--space-xl);
-                      }
-                      .hero-content {
-                        order: 1;
-                        text-align: left;
-                      }
-                      .hero-image {
-                        order: 2;
-                        width: 100%;
-                        margin-top: var(--space-lg);
-                        justify-content: flex-start;
-                      }
-                      .hero-image img {
-                        max-width: 90%;
-                        height: auto;
-                      }
-                      .hero-cta-buttons {
-                        justify-content: flex-start;
-                        gap: var(--space-md);
-                      }
-                      .trusted-by-logos {
-                        justify-content: flex-start;
-                        gap: var(--space-lg);
-                      }
+                        #hero-section {
+                            padding: var(--space-xl) 0 var(--space-2xl);
+                            margin-top: var(--space-3xl);
+                        }
+                        .hero-container {
+                            flex-direction: column;
+                            align-items: flex-start;
+                            gap: var(--space-xl);
+                        }
+                        .hero-content {
+                            order: 1;
+                            text-align: left;
+                        }
+                        .hero-image {
+                            order: 2;
+                            width: 100%;
+                            margin-top: var(--space-lg);
+                            justify-content: flex-start;
+                        }
+                        .hero-image img {
+                            max-width: 90%;
+                            height: auto;
+                        }
+                        .hero-cta-buttons {
+                            justify-content: flex-start;
+                            gap: var(--space-md);
+                        }
+                        .trusted-by-logos {
+                            justify-content: flex-start;
+                            gap: var(--space-lg);
+                        }
                     }
-                </style>
-                <section id="hero-section">
-                    <div class="hero-container">
-                        <!-- Left Column: Content -->
+                    </style>
+                <!--Hero HTML-->
+                    <section class="hero-container">
+                    <!-- Left Column: Content -->
                         <div class="hero-content">
-                            <!-- Badge -->
+                        <!-- Badge -->
                             <div class="hero-badge">
                                 Your SaaS for Everyone
                             </div>
-
-                            <!-- Main Heading -->
-                            <h1 class="hero-title">
-                                Tinggalkan <span class="hero-title-highlight">cara manual,</span><br>
-                                majukan usaha emas Anda.
-                            </h1>
-
-                            <!-- Subtitle -->
-                            <p class="hero-subtitle">
-                                Dari manajemen pelanggan, stock, harga, hingga pembukuan, <br>semua rapi di satu aplikasi.
+                        <!-- Main Heading -->
+                        <h1 class="hero-title">
+                            Tinggalkan <span class="hero-title-highlight">cara manual,</span><br>
+                            majukan usaha emas Anda.
+                        </h1>
+                        <!-- Subtitle -->
+                        <p class="hero-subtitle">
+                            Dari manajemen pelanggan, stock, harga, hingga pembukuan, <br>semua rapi di satu aplikasi.
+                        </p>
+                        <!-- CTA Buttons -->
+                        <div class="hero-cta-buttons">
+                            <a href="/register" class="hero-cta-primary">
+                                Daftar Sekarang
+                            </a>
+                            <a href="/about" class="hero-cta-secondary">
+                                Lihat Demo
+                            </a>
+                        </div>
+                        <!-- Trusted By Section -->
+                        <div class="trusted-by-section">
+                            <p class="trusted-by-title">
+                                Trusted by
                             </p>
-
-                            <!-- CTA Buttons -->
-                            <div class="hero-cta-buttons">
-                                <a href="/register" class="hero-cta-primary">
-                                    Daftar Sekarang
-                                </a>
-                                <a href="/about" class="hero-cta-secondary">
-                                    Lihat Demo
-                                </a>
-                            </div>
-
-                            <!-- Trusted By Section -->
-                            <div class="trusted-by-section">
-                                <p class="trusted-by-title">
-                                    Trusted by
-                                </p>
-                                <div class="trusted-by-logos">
-                                    <img src="/assets/images/client-logo.svg" alt="Webflow" class="trusted-by-logo">
-                                    <img src="/assets/images/client-logo.svg" alt="Slack" class="trusted-by-logo">
-                                    <img src="/assets/images/client-logo.svg" alt="Finsweet" class="trusted-by-logo">
-                                    <img src="/assets/images/client-logo.svg" alt="Reddit" class="trusted-by-logo">
-                                    <img src="/assets/images/client-logo.svg" alt="Amazon" class="trusted-by-logo">
-                                    <img src="/assets/images/client-logo.svg" alt="Salesforce" class="trusted-by-logo">
-                                </div>
+                            <div class="trusted-by-logos">
+                                <img src="/assets/images/client-logo.svg" alt="Webflow" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Slack" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Finsweet" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Reddit" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Amazon" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Salesforce" class="trusted-by-logo">
                             </div>
                         </div>
-
-                        <!-- Right Column: Hero Image -->
+                        </div>
+                    <!-- Right Column: Hero Image -->
                         <div class="hero-image">
                             <img src="/assets/images/hero-image.webp" alt="Hero Image">
                         </div>
-                    </div>
-                </section>
-                <!-- </hero section -->
-
-                <?php break;
-            case 'about': ?>
-                <div class="content">
+                    </section>
+        <!--About Page-->
+            <?php break; case 'about': ?>
+            <!--Top section-->
+                <section class="content">
                     <h2>About MonoPHP</h2>
                     <p>MonoPHP is a minimalist PHP framework inspired by the philosophy of keeping things simple and effective. Built with modern web development practices in mind, it provides just enough structure to build robust applications without the bloat.</p>
-                </div>
-                <?php
-                break;
-
-            case 'contact':
-                ?>
-                <div class="content">
+                </section>
+        <!--Contact Page-->
+            <?php break; case 'contact': ?>
+            <!--Top section-->
+                <section class="content">
                     <h2>Contact Us</h2>
                     <p>Have questions about MonoPHP? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
 
@@ -1553,25 +1408,25 @@
                                 <div style="margin-bottom: 1rem;">
                                     <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Name</label>
                                     <input type="text" id="name" name="name" required
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
                                 </div>
 
                                 <div style="margin-bottom: 1rem;">
                                     <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
                                     <input type="email" id="email" name="email" required
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
                                 </div>
 
                                 <div style="margin-bottom: 1rem;">
                                     <label for="subject" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Subject</label>
                                     <input type="text" id="subject" name="subject" required
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
                                 </div>
 
                                 <div style="margin-bottom: 1.5rem;">
                                     <label for="message" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Message</label>
                                     <textarea id="message" name="message" rows="5" required
-                                              style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; resize: vertical;"></textarea>
+                                            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; resize: vertical;"></textarea>
                                 </div>
 
                                 <button type="submit" class="btn" style="width: 100%;">Send Message</button>
@@ -1604,429 +1459,530 @@
                             </div>
                         </div>
                     </div>
-                    </div>
-                </div>
-
-                <style>
-                @media (max-width: 768px) {
-                    .content > div {
-                        grid-template-columns: 1fr !important;
-                    }
-                }
-                </style>
-                <?php
-                break;
-
-            case 'dashboard':
-                // Ensure user is logged in (this check is also done in routing)
-                if (!$is_logged_in) {
-                    redirect('/');
-                }
-
-                $user = $_SESSION['user'];
-                ?>
-
-                <style>
-                    .dashboard-content {
-                        flex: 1;
-                        margin-left: 250px;
-                        padding: 1rem 0rem 1rem 1rem;
-                        position: relative;
-                        top: 0;
-                        height: 100vh;
-                        background: #f8f9fa;
-                        overflow: hidden;
-                    }
-
-                    .dashboard-content-wrapper {
-                        background: white;
-                        border-radius: 16px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-                        border: 1px solid #e9ecef;
-                        padding: 2rem;
-                        height: calc(100vh - 6rem);
-                        overflow-y: auto;
-                    }
-
-                    /* Override container margin for dashboard layout */
-                    .container {
-                        margin: 0 auto !important;
-                        padding: 0 !important;
-                        max-width: none !important;
-                    }
-
-                    .dashboard-header {
-                        margin-bottom: 2rem;
-                        padding-bottom: 1rem;
-                        border-bottom: 1px solid #e9ecef;
-                    }
-
-                    .dashboard-header h2 {
-                        margin: 0 0 0.5rem 0;
-                        color: #333;
-                        font-weight: 600;
-                        font-size: 1.75rem;
-                    }
-
-                    .dashboard-header p {
-                        margin: 0;
-                        color: #6c757d;
-                        font-size: 1rem;
-                    }
-
-                    .dashboard-cards {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                        gap: 1.5rem;
-                        margin-bottom: 2rem;
-                    }
-
-                    .dashboard-card {
-                        background: #f8f9fa;
-                        padding: 2rem;
-                        border-radius: 12px;
-                        border: 1px solid #e9ecef;
-                        transition: transform 0.2s ease, background-color 0.2s ease;
-                    }
-
-                    .dashboard-card:hover {
-                        transform: translateY(-2px);
-                        background: white;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                    }
-
-                    .card-header {
-                        display: flex;
-                        align-items: center;
-                        margin-bottom: 1rem;
-                    }
-
-                    .card-icon {
-                        width: 40px;
-                        height: 40px;
-                        background: #007bff;
-                        border-radius: 8px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin-right: 1rem;
-                        font-size: 1.2rem;
-                    }
-
-                    .card-title {
-                        margin: 0;
-                        color: #333;
-                        font-weight: 600;
-                        font-size: 1.1rem;
-                    }
-
-                    .card-content {
-                        color: #6c757d;
-                        line-height: 1.6;
-                    }
-
-                    .content-body {
-                        background: white;
-                        padding: 2rem;
-                        border-radius: 12px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        border: 1px solid #e9ecef;
-                    }
-
-                    .placeholder-content {
-                        text-align: center;
-                        padding: 3rem;
-                        color: #6c757d;
-                    }
-
-                    @media (max-width: 768px) {
-                        .sidebar {
-                            width: 100%;
-                            height: auto;
-                            position: relative;
-                        }
-
-                        .dashboard-content {
-                            margin-left: 0;
-                            padding: 1rem;
-                        }
-
-                        .dashboard-layout {
-                            flex-direction: column;
-                        }
-                    }
-                </style>
-                <!-- Main Content -->
-                <div class="dashboard-content">
-                    <div class="dashboard-content-wrapper">
-                        <div class="dashboard-header">
-                            <h2>Create a Test Member</h2>
-                            <p>Create your first member to change their plans, edit custom fields, login as that person, etc.</p>
-                        </div>
-
-                        <div class="dashboard-cards">
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">👥</div>
-                                <h3 class="card-title">Members</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Manage your community members, their profiles, and access levels.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📋</div>
-                                <h3 class="card-title">Plans</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Create and manage subscription plans for your members.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📄</div>
-                                <h3 class="card-title">Gated Content</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Control access to premium content based on membership levels.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">🔧</div>
-                                <h3 class="card-title">Components</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Customize and configure various components of your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">👥</div>
-                                <h3 class="card-title">Community</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Foster engagement and build connections within your community.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div class="card-icon">📊</div>
-                                <h3 class="card-title">Analytics</h3>
-                            </div>
-                            <div class="card-content">
-                                <p>Track performance metrics and gain insights into your platform.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <?php
-                break;
-            // <settings>
-            case 'settings':
-                // Ensure user is logged in (this check is also done in routing)
-                if (!$is_logged_in) {
-                    redirect('/');
-                }
-
-                $user = $_SESSION['user'];
-                ?>
-
-                <!-- Main Content -->
-                <div class="dashboard-content">
-                    <div class="dashboard-header">
-                        <h2>Settings, <?= e($user['name']); ?>!</h2>
-                        <p>Here's what's happening with your account today.</p>
-                    </div>
-                    <div class="content-body">
-                        <!-- Content will go here -->
-                        <div class="placeholder-content">
-                            <p>Main content area - ready for your content!</p>
-                        </div>
-                    </div>
-                </div>
-
-                <?php
-                break;
-                // </settings>
-
-            default:
-                // Default to home page
-                ?>
-                <div class="hero">
-                    <h1>MonoPHP</h1>
-                    <p>Simple & Minimalist PHP Framework</p>
-
-                    <?php if (!$is_logged_in): ?>
-                        <p>Build fast, secure web applications with minimal code.</p>
-                        <a href="<?php echo e($_SESSION['google_auth_url']); ?>" class="btn btn-google">
-                            <svg width="16" height="16" viewBox="0 0 24 24">
-                                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                            Get Started with Google
-                        </a>
-                    <?php else: ?>
-                        <p>Welcome back, <strong><?php echo e($_SESSION['user']['name']); ?></strong>!</p>
-                        <a href="/dashboard" class="btn">Go to Dashboard</a>
-                    <?php endif; ?>
-                </div>
-                <?php
-                break;
-        }
-        ?>
+                </section>
+        <!--404 Page-->
+            <?php break; default:?>
+            <!--Top section-->
+                404
+            <?php } ?>
+    <!--Footer-->
+        <!--Footer style-->
+        <!--Footer HTML-->
     </div>
+<!-- </public-container>  -->
+
+<!--LAYOUT: dashboard pages-->
+<?php } elseif($is_dashboard_page) { ?>
+<!-- <dashboard-container>  -->
+    <div class="dashboard-container">
+        <!--Sidebar-->
+            <!--// Sidebar Style-->
+                <style>
+                .sidebar {
+                    width: 250px;
+                    background: #f8f9fa;
+                    color: #333;
+                    display: flex;
+                    flex-direction: column;
+                    position: fixed;
+                    height: 100vh;
+                    left: 0;
+                    top: 0;
+                    z-index: 1000;
+                }
+
+                .sidebar-header {
+                    padding: 2rem 1.5rem 1rem 1.5rem;
+                    border-bottom: none;
+                }
+
+                .sidebar-header h3 {
+                    margin: 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.25rem;
+                }
+
+                .sidebar-nav {
+                    flex: 1;
+                    padding: 1rem 0;
+                }
+
+                .sidebar-nav ul {
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                .sidebar-nav li {
+                    margin: 0.25rem 0;
+                }
+
+                .nav-link {
+                    display: flex;
+                    align-items: center;
+                    padding: 0.75rem 1.5rem;
+                    color: #6c757d;
+                    text-decoration: none;
+                    transition: all 0.2s ease;
+                    border-radius: 0 25px 25px 0;
+                    margin-right: 1rem;
+                    font-weight: 500;
+                }
+
+                .nav-link:hover {
+                    background: #e9ecef;
+                    color: #495057;
+                }
+
+                .nav-link.active {
+                    background: #007bff;
+                    color: white;
+                }
+
+                .nav-link .nav-icon {
+                    margin-right: 0.75rem;
+                    font-size: 1.1rem;
+                }
+
+                .sidebar-footer {
+                    padding: 1.5rem;
+                    border-top: 1px solid #e9ecef;
+                }
+
+                .sidebar-footer .btn {
+                    width: 100%;
+                    padding: 0.75rem;
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    display: inline-block;
+                    text-align: center;
+                    font-weight: 500;
+                    transition: background 0.2s ease;
+                }
+
+                .sidebar-footer .btn:hover {
+                    background: #c82333;
+                }
+                </style>
+            <!--// Sidebar HTML-->
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <h3>Dashboard</h3>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <ul>
+                            <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
+                            <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
+                        </ul>
+                    </nav>
+                    <div class="sidebar-footer">
+                        <a href="/logout" class="btn btn-danger">Logout</a>
+                    </div>
+                </div>
+        <!--Dashboard Page-->
+        <?php switch ($current_page) { case 'dashboard':
+            // Ensure user is logged in (this check is also done in routing)
+            if (!$is_logged_in) {
+                redirect('/');
+            }
+
+            $user = $_SESSION['user'];
+            ?>
+
+            <style>
+                .dashboard-content {
+                    flex: 1;
+                    margin-left: 250px;
+                    padding: 1rem 0rem 1rem 1rem;
+                    position: relative;
+                    top: 0;
+                    height: 100vh;
+                    background: #f8f9fa;
+                    overflow: hidden;
+                }
+
+                .dashboard-content-wrapper {
+                    background: white;
+                    border-radius: 16px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+                    border: 1px solid #e9ecef;
+                    padding: 2rem;
+                    height: calc(100vh - 6rem);
+                    overflow-y: auto;
+                }
+
+                /* Override container margin for dashboard layout */
+                .container {
+                    margin: 0 auto !important;
+                    padding: 0 !important;
+                    max-width: none !important;
+                }
+
+                .dashboard-header {
+                    margin-bottom: 2rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid #e9ecef;
+                }
+
+                .dashboard-header h2 {
+                    margin: 0 0 0.5rem 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.75rem;
+                }
+
+                .dashboard-header p {
+                    margin: 0;
+                    color: #6c757d;
+                    font-size: 1rem;
+                }
+
+                .dashboard-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                    margin-bottom: 2rem;
+                }
+
+                .dashboard-card {
+                    background: #f8f9fa;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    border: 1px solid #e9ecef;
+                    transition: transform 0.2s ease, background-color 0.2s ease;
+                }
+
+                .dashboard-card:hover {
+                    transform: translateY(-2px);
+                    background: white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                }
+
+                .card-header {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                }
+
+                .card-icon {
+                    width: 40px;
+                    height: 40px;
+                    background: #007bff;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 1rem;
+                    font-size: 1.2rem;
+                }
+
+                .card-title {
+                    margin: 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                }
+
+                .card-content {
+                    color: #6c757d;
+                    line-height: 1.6;
+                }
+
+                .content-body {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    border: 1px solid #e9ecef;
+                }
+
+                .placeholder-content {
+                    text-align: center;
+                    padding: 3rem;
+                    color: #6c757d;
+                }
+
+                @media (max-width: 768px) {
+                    .sidebar {
+                        width: 100%;
+                        height: auto;
+                        position: relative;
+                    }
+
+                    .dashboard-content {
+                        margin-left: 0;
+                        padding: 1rem;
+                    }
+
+                    .dashboard-layout {
+                        flex-direction: column;
+                    }
+                }
+            </style>
+            <!-- Main Content -->
+            <div class="dashboard-content">
+                <div class="dashboard-content-wrapper">
+                    <div class="dashboard-header">
+                        <h2>Create a Test Member</h2>
+                        <p>Create your first member to change their plans, edit custom fields, login as that person, etc.</p>
+                    </div>
+
+                    <div class="dashboard-cards">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">👥</div>
+                            <h3 class="card-title">Members</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Manage your community members, their profiles, and access levels.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📋</div>
+                            <h3 class="card-title">Plans</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Create and manage subscription plans for your members.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📄</div>
+                            <h3 class="card-title">Gated Content</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Control access to premium content based on membership levels.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">🔧</div>
+                            <h3 class="card-title">Components</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Customize and configure various components of your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">👥</div>
+                            <h3 class="card-title">Community</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Foster engagement and build connections within your community.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Analytics</h3>
+                        </div>
+                        <div class="card-content">
+                            <p>Track performance metrics and gain insights into your platform.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <!--Settings Page-->
+        <?php break; case 'settings':
+        // Ensure user is logged in (this check is also done in routing)
+        if (!$is_logged_in) {
+            redirect('/');
+        }
+
+        $user = $_SESSION['user'];
+        ?>
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <div class="dashboard-header">
+                <h2>Settings, <?= e($user['name']); ?>!</h2>
+                <p>Here's what's happening with your account today.</p>
+            </div>
+            <div class="content-body">
+                <!-- Content will go here -->
+                <div class="placeholder-content">
+                    <p>Main content area - ready for your content!</p>
+                </div>
+            </div>
+        </div>
+        <!--404 Page-->
+        <?php break; default:?>
+        <div>
+            Error 404
+        </div>
+        <?php } ?>
+        <!--Footer Page-->
+
+    </div>
+<!-- </dashboard-container>  -->
+
+<!--LAYOUT: other pages-->
+<?php } else { ?>
+<!-- <other-container>  -->
+    <div class="other-container">
+    </div>
+<!-- </other-container>  -->
+
+<?php } ?>
 </body>
 </html>
 <!--<EOF>-->
