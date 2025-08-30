@@ -1,758 +1,715 @@
 <?php
-
 // <initial setting>
     // Strict types
-    declare(strict_types=1);
+        declare(strict_types=1);
+    // Define development mode
+        // $is_development = false;
+        $is_development =
+            $_SERVER["SERVER_NAME"] === "localhost" ||
+            $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+            $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
 // </initial setting>
 
 // <env>
-    const SITE_ENV_FILE = __DIR__ . "/../.env";
-    function load_env()
-    {
-        if (!file_exists(SITE_ENV_FILE)) {
-            die(".env file not found yes");
-        }
+    // Locate env file
+        const SITE_ENV_FILE = __DIR__ . "/../.env";
+    // Function to load env
+        function load_env() {
+            if (!file_exists(SITE_ENV_FILE)) {
+                die(".env file not found yes");
+            }
 
-        $lines = file(SITE_ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos(trim($line), "#") === 0) {
-                continue;
+            $lines = file(SITE_ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), "#") === 0) {
+                    continue;
+                }
+                [$key, $value] = explode("=", $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+                if (strpos($value, '"') === 0 || strpos($value, "'") === 0) {
+                    $value = substr($value, 1, -1);
+                }
+                putenv("$key=$value");
+                $_ENV[$key] = $value;
             }
-            [$key, $value] = explode("=", $line, 2);
-            $key = trim($key);
-            $value = trim($value);
-            if (strpos($value, '"') === 0 || strpos($value, "'") === 0) {
-                $value = substr($value, 1, -1);
-            }
-            putenv("$key=$value");
-            $_ENV[$key] = $value;
         }
-    }
-    load_env();
+        load_env();
 // </env>
 
 // <config>
-    const SITE_APP_VERSION = "1.0.0";
-    const SITE_DB_FILE = __DIR__ . "/../database/monophp.sqlite";
-    const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
-    define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
+    // Site settings
+        const SITE_APP_VERSION = "1.0.0";
+        define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
+    // File location
+        const SITE_DB_FILE = __DIR__ . "/../database/monophp.sqlite";
+        const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
 // </config>
 
 // <session-management>
-    ini_set("session.use_only_cookies", "1");
+    // Initialize session
+        ini_set("session.use_only_cookies", "1");
     // Extract domain from SITE_DOMAIN (remove protocol if present)
-    $session_domain = SITE_DOMAIN;
-    if (strpos($session_domain, 'http://') === 0) {
-        $session_domain = substr($session_domain, 7);
-    } elseif (strpos($session_domain, 'https://') === 0) {
-        $session_domain = substr($session_domain, 8);
-    }
-
-    session_set_cookie_params([
-        "lifetime" => 86400, // 24 hours
-        "path" => "/",
-        "domain" => $session_domain === 'localhost' ? '' : $session_domain,
-        "secure" => isset($_SERVER["HTTPS"]),
-        "httponly" => true,
-        "samesite" => "Lax",
-    ]);
-    session_start();
-
+        $session_domain = SITE_DOMAIN;
+        if (strpos($session_domain, 'http://') === 0) {
+            $session_domain = substr($session_domain, 7);
+        } elseif (strpos($session_domain, 'https://') === 0) {
+            $session_domain = substr($session_domain, 8);
+        }
+    // Set cookie parameters
+        session_set_cookie_params([
+            "lifetime" => 86400, // 24 hours
+            "path" => "/",
+            "domain" => $session_domain === 'localhost' ? '' : $session_domain,
+            "secure" => isset($_SERVER["HTTPS"]),
+            "httponly" => true,
+            "samesite" => "Lax",
+        ]);
+    // Start session
+        session_start();
     // Clean up stale OAuth data on every page load (but not during OAuth callback)
-    if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300 && !isset($_GET['code'])) {
-        // OAuth state is older than 5 minutes, clear it (unless we're processing OAuth callback)
-        clear_oauth_session();
-    }
-
+        if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300 && !isset($_GET['code'])) {
+            // OAuth state is older than 5 minutes, clear it (unless we're processing OAuth callback)
+            clear_oauth_session();
+        }
     // Clean up expired sessions
-    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
-        // Session is older than 24 hours, clear user data
-        unset($_SESSION['user'], $_SESSION['login_time'], $_SESSION['login_ip']);
-    }
+        if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
+            // Session is older than 24 hours, clear user data
+            unset($_SESSION['user'], $_SESSION['login_time'], $_SESSION['login_ip']);
+        }
 // </session-management>
 
 // <security-headers>
     // csrf
-    if (empty($_SESSION["csrf_token"])) {
-        $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
-    }
-    $csrf_token = $_SESSION["csrf_token"];
-
+        if (empty($_SESSION["csrf_token"])) {
+            $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+        }
+        $csrf_token = $_SESSION["csrf_token"];
     // csp
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; https:; connect-src 'self' https:;");
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; https:; connect-src 'self' https:;");
 // </security-headers>
 
 // <error-handling>
-    // $is_development = false;
-    $is_development =
-        $_SERVER["SERVER_NAME"] === "localhost" ||
-        $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
-        $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
-
     // Setup error log
-    $error_log_path = SITE_LOG_FILE;
-    if (!file_exists($error_log_path)) {
-        touch($error_log_path);
-        chmod($error_log_path, 0666);
-    }
-
-    // Helper function to get error type name
-    function getErrorTypeName($errno) {
-        return match ($errno) { E_ERROR => "Fatal Error", E_WARNING => "Warning", E_PARSE => "Parse Error", E_NOTICE => "Notice", E_CORE_ERROR => "Core Error", E_CORE_WARNING => "Core Warning", E_COMPILE_ERROR => "Compile Error", E_COMPILE_WARNING => "Compile Warning", E_USER_ERROR => "User Error", E_USER_WARNING => "User Warning", E_USER_NOTICE => "User Notice", E_RECOVERABLE_ERROR => "Recoverable Error", E_DEPRECATED => "Deprecated", E_USER_DEPRECATED => "User Deprecated", default => "Unknown Error", };
-    }
-
-    // Helper function to get code context
-    function getCodeContext($file, $line, $context_lines = 5) {
-        if (!file_exists($file)) return "File not found";
-
-        $lines = file($file);
-        $start = max(0, $line - $context_lines - 1);
-        $end = min(count($lines), $line + $context_lines);
-
-        $context = "";
-        for ($i = $start; $i < $end; $i++) {
-            $line_num = $i + 1;
-            $marker = ($line_num == $line) ? " >>> " : "     ";
-            $context .= sprintf("%s%d: %s", $marker, $line_num, $lines[$i]);
+        $error_log_path = SITE_LOG_FILE;
+        if (!file_exists($error_log_path)) {
+            touch($error_log_path);
+            chmod($error_log_path, 0666);
         }
+    // Helper function to get error type name
+        function getErrorTypeName($errno) {
+            return match ($errno) { E_ERROR => "Fatal Error", E_WARNING => "Warning", E_PARSE => "Parse Error", E_NOTICE => "Notice", E_CORE_ERROR => "Core Error", E_CORE_WARNING => "Core Warning", E_COMPILE_ERROR => "Compile Error", E_COMPILE_WARNING => "Compile Warning", E_USER_ERROR => "User Error", E_USER_WARNING => "User Warning", E_USER_NOTICE => "User Notice", E_RECOVERABLE_ERROR => "Recoverable Error", E_DEPRECATED => "Deprecated", E_USER_DEPRECATED => "User Deprecated", default => "Unknown Error", };
+        }
+    // Helper function to get code context
+        function getCodeContext($file, $line, $context_lines = 5) {
+            if (!file_exists($file)) return "File not found";
 
-        return $context;
-    }
+            $lines = file($file);
+            $start = max(0, $line - $context_lines - 1);
+            $end = min(count($lines), $line + $context_lines);
 
+            $context = "";
+            for ($i = $start; $i < $end; $i++) {
+                $line_num = $i + 1;
+                $marker = ($line_num == $line) ? " >>> " : "     ";
+                $context .= sprintf("%s%d: %s", $marker, $line_num, $lines[$i]);
+            }
+
+            return $context;
+        }
     // Development environment
-    if ($is_development) {
-        error_reporting(E_ALL);
-        ini_set("display_errors", 0);
-        ini_set("display_startup_errors", 0);
+        if ($is_development) {
+            error_reporting(E_ALL);
+            ini_set("display_errors", 0);
+            ini_set("display_startup_errors", 0);
 
-        // Error handler for development
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-            $error_type = getErrorTypeName($errno);
-            $code_context = getCodeContext($errfile, $errline);
+            // Error handler for development
+            set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+                $error_type = getErrorTypeName($errno);
+                $code_context = getCodeContext($errfile, $errline);
 
-            echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
-            echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ {$error_type}</h3>";
-            echo "<p><strong>Message:</strong> {$errstr}</p>";
-            echo "<p><strong>File:</strong> {$errfile}</p>";
-            echo "<p><strong>Line:</strong> {$errline}</p>";
-            echo "<details><summary><strong>Code Context</strong></summary>";
-            echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
-            echo "</details>";
-            echo "</div>";
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ {$error_type}</h3>";
+                echo "<p><strong>Message:</strong> {$errstr}</p>";
+                echo "<p><strong>File:</strong> {$errfile}</p>";
+                echo "<p><strong>Line:</strong> {$errline}</p>";
+                echo "<details><summary><strong>Code Context</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+                echo "</details>";
+                echo "</div>";
 
-            return true;
-        });
+                return true;
+            });
 
-        // Exception handler for development
-        set_exception_handler(function ($e) {
-            $code_context = getCodeContext($e->getFile(), $e->getLine());
+            // Exception handler for development
+            set_exception_handler(function ($e) {
+                $code_context = getCodeContext($e->getFile(), $e->getLine());
 
-            echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
-            echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>💥 Uncaught Exception</h3>";
-            echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
-            echo "<p><strong>File:</strong> " . $e->getFile() . "</p>";
-            echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
-            echo "<details><summary><strong>Code Context</strong></summary>";
-            echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
-            echo "</details>";
-            echo "<details><summary><strong>Stack Trace</strong></summary>";
-            echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>" . $e->getTraceAsString() . "</pre>";
-            echo "</details>";
-            echo "</div>";
-        });
-
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>💥 Uncaught Exception</h3>";
+                echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
+                echo "<p><strong>File:</strong> " . $e->getFile() . "</p>";
+                echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
+                echo "<details><summary><strong>Code Context</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+                echo "</details>";
+                echo "<details><summary><strong>Stack Trace</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>" . $e->getTraceAsString() . "</pre>";
+                echo "</details>";
+                echo "</div>";
+            });
     // Production environment
-    } else {
-        error_reporting(E_ALL);
-        ini_set("display_errors", 0);
-        ini_set("display_startup_errors", 0);
-        ini_set("log_errors", 1);
-        ini_set("error_log", $error_log_path);
+        } else {
+            error_reporting(E_ALL);
+            ini_set("display_errors", 0);
+            ini_set("display_startup_errors", 0);
+            ini_set("log_errors", 1);
+            ini_set("error_log", $error_log_path);
 
-        // Start error group logging
-        date_default_timezone_set("Asia/Jakarta");
-        $date = date("Y-m-d H:i:s");
-        $uri = $_SERVER["REQUEST_URI"] ?? 'CLI';
-        $separator = "\n========== Error Group: {$date} WIB | URI: {$uri} ==========\n";
-        file_put_contents($error_log_path, $separator, FILE_APPEND);
-
-        // Error handler for production
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) use ($error_log_path) {
+            // Start error group logging
+            date_default_timezone_set("Asia/Jakarta");
             $date = date("Y-m-d H:i:s");
-            $error_type = getErrorTypeName($errno);
-            $error_message = "[{$date}] {$error_type} [{$errno}]: {$errstr}\n";
-            $error_message .= "File: {$errfile}\n";
-            $error_message .= "Line: {$errline}\n\n";
-            file_put_contents($error_log_path, $error_message, FILE_APPEND);
-            return true;
-        });
-
-        // Exception handler for production
-        set_exception_handler(function ($e) use ($error_log_path) {
-            $date = date("Y-m-d H:i:s");
-            $error_message = "[{$date}] Uncaught Exception: " . $e->getMessage() . "\n";
-            $error_message .= "File: " . $e->getFile() . "\n";
-            $error_message .= "Line: " . $e->getLine() . "\n";
-            $error_message .= "\nTrace:\n" . $e->getTraceAsString() . "\n";
-            file_put_contents($error_log_path, $error_message, FILE_APPEND);
-
-            // End error group
-            $separator = "==========\n\n";
+            $uri = $_SERVER["REQUEST_URI"] ?? 'CLI';
+            $separator = "\n========== Error Group: {$date} WIB | URI: {$uri} ==========\n";
             file_put_contents($error_log_path, $separator, FILE_APPEND);
 
-            http_response_code(500);
-            echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
-            echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ Server Error</h3>";
-            echo "<p>Sorry, something went wrong! Our team has been notified.</p>";
-            echo "</div>";
-            exit();
-        });
-    }
+            // Error handler for production
+            set_error_handler(function ($errno, $errstr, $errfile, $errline) use ($error_log_path) {
+                $date = date("Y-m-d H:i:s");
+                $error_type = getErrorTypeName($errno);
+                $error_message = "[{$date}] {$error_type} [{$errno}]: {$errstr}\n";
+                $error_message .= "File: {$errfile}\n";
+                $error_message .= "Line: {$errline}\n\n";
+                file_put_contents($error_log_path, $error_message, FILE_APPEND);
+                return true;
+            });
+
+            // Exception handler for production
+            set_exception_handler(function ($e) use ($error_log_path) {
+                $date = date("Y-m-d H:i:s");
+                $error_message = "[{$date}] Uncaught Exception: " . $e->getMessage() . "\n";
+                $error_message .= "File: " . $e->getFile() . "\n";
+                $error_message .= "Line: " . $e->getLine() . "\n";
+                $error_message .= "\nTrace:\n" . $e->getTraceAsString() . "\n";
+                file_put_contents($error_log_path, $error_message, FILE_APPEND);
+
+                // End error group
+                $separator = "==========\n\n";
+                file_put_contents($error_log_path, $separator, FILE_APPEND);
+
+                http_response_code(500);
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ Server Error</h3>";
+                echo "<p>Sorry, something went wrong! Our team has been notified.</p>";
+                echo "</div>";
+                exit();
+            });
+        }
     // Sample error trigger:
-    // trigger_error("This is a sample error message.", E_USER_ERROR);
-    // undefined_function();
+        // trigger_error("This is a sample error message.", E_USER_ERROR);
+        // undefined_function();
 // </error-handling>
 
 // <database>
     // Creates and returns a PDO database connection.
-    function get_db_connection(): PDO
-    {
-        try {
-            $pdo = new PDO("sqlite:" . SITE_DB_FILE);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $pdo->exec("PRAGMA foreign_keys = ON;");
-            return $pdo;
-        } catch (PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
-        }
-    }
-
-    // Initializes the core database tables if they don't exist.
-    function initialize_database(): void
-    {
-        $pdo = get_db_connection();
-        $pdo->exec("CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_id VARCHAR(255) UNIQUE NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                picture TEXT,
-                role VARCHAR(255) DEFAULT 'user',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );");
-        $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
-                version TEXT UNIQUE NOT NULL,
-                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );");
-    }
-
-    // Runs pending database migrations to update the schema without data loss.
-    function run_migrations(): void
-    {
-        $migrations = [
-            // Migrations can be added here in the future. Example:
-            // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
-        ];
-
-        $pdo = get_db_connection();
-        $applied_migrations = $pdo
-            ->query("SELECT version FROM migrations")
-            ->fetchAll(PDO::FETCH_COLUMN);
-
-        $pdo->beginTransaction();
-        try {
-            foreach ($migrations as $version => $sql) {
-                if (!in_array($version, $applied_migrations)) {
-                    $pdo->exec($sql);
-                    $stmt = $pdo->prepare(
-                        "INSERT INTO migrations (version) VALUES (:version)",
-                    );
-                    $stmt->execute([":version" => $version]);
-                }
+        function get_db_connection(): PDO {
+            try {
+                $pdo = new PDO("sqlite:" . SITE_DB_FILE);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                $pdo->exec("PRAGMA foreign_keys = ON;");
+                return $pdo;
+            } catch (PDOException $e) {
+                die("Database connection failed: " . $e->getMessage());
             }
-            $pdo->commit();
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            die("A database migration failed: " . $e->getMessage());
         }
-    }
+    // Initializes the core database tables if they don't exist.
+        function initialize_database(): void {
+            $pdo = get_db_connection();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    google_id VARCHAR(255) UNIQUE NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    picture TEXT,
+                    role VARCHAR(255) DEFAULT 'user',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
+                    version TEXT UNIQUE NOT NULL,
+                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );");
+        }
+    // Runs pending database migrations to update the schema without data loss.
+        function run_migrations(): void {
+            $migrations = [
+                // Migrations can be added here in the future. Example:
+                // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+            ];
 
+            $pdo = get_db_connection();
+            $applied_migrations = $pdo
+                ->query("SELECT version FROM migrations")
+                ->fetchAll(PDO::FETCH_COLUMN);
+
+            $pdo->beginTransaction();
+            try {
+                foreach ($migrations as $version => $sql) {
+                    if (!in_array($version, $applied_migrations)) {
+                        $pdo->exec($sql);
+                        $stmt = $pdo->prepare(
+                            "INSERT INTO migrations (version) VALUES (:version)",
+                        );
+                        $stmt->execute([":version" => $version]);
+                    }
+                }
+                $pdo->commit();
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                die("A database migration failed: " . $e->getMessage());
+            }
+        }
     // Initialize and migrate database on every run.
-    initialize_database();
-    run_migrations();
+        initialize_database();
+        run_migrations();
 // </database>
 
 // <helpers>
     // Escapes special characters in a string for safe HTML output.
-    function e(?string $string): string
-    {
-        return htmlspecialchars((string) $string, ENT_QUOTES, "UTF-8");
-    }
-
-    // Sanitizes input data to prevent XSS attacks.
-    function sanitize_input(array $data): array {
-        $sanitized = [];
-        foreach ($data as $key => $value) {
-            if (is_string($value)) {
-                $sanitized[$key] = trim(strip_tags($value));
-            } else {
-                $sanitized[$key] = $value;
-            }
+        function e(?string $string): string {
+            return htmlspecialchars((string) $string, ENT_QUOTES, "UTF-8");
         }
-        return $sanitized;
-    }
-
+    // Sanitizes input data to prevent XSS attacks.
+        function sanitize_input(array $data): array {
+            $sanitized = [];
+            foreach ($data as $key => $value) {
+                $sanitized[$key] = is_string($value) ? trim(strip_tags($value)) : $value;
+            }
+            return $sanitized;
+        }
     // CSRF token generation and validation
-    function csrf_token(): string {
-        return $_SESSION['csrf_token'];
-    }
-
+        function csrf_token(): string {
+            return $_SESSION['csrf_token'];
+        }
     // CSRF token field for forms
-    function csrf_field(): string {
-        return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
-    }
-
+        function csrf_field(): string {
+            return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+        }
     // Redirects to a URL and exits script execution.
-    function redirect(string $url): void
-    {
-        header("Location: " . $url);
-        exit();
-    }
+        function redirect(string $url): void {
+            header("Location: $url");
+            exit();
+        }
 // </helpers>
 
 // <authentication>
     // Clear stale OAuth sessions and data
-    function clear_oauth_session(): void
-    {
-        $keys_to_clear = ['oauth_state', 'oauth_timestamp', 'google_auth_error', 'google_auth_url'];
-        foreach ($keys_to_clear as $key) {
-            unset($_SESSION[$key]);
+        function clear_oauth_session(): void {
+            $keys_to_clear = ['oauth_state', 'oauth_timestamp', 'google_auth_error', 'google_auth_url'];
+            foreach ($keys_to_clear as $key) {
+                unset($_SESSION[$key]);
+            }
         }
-    }
-
     // Validate user session
-    function is_valid_session(): bool
-    {
-        if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
-            return false;
+        function is_valid_session(): bool {
+            if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
+                return false;
+            }
+
+            // Check if session is too old (24 hours)
+            if ((time() - $_SESSION['login_time']) > 86400) {
+                return false;
+            }
+
+            // Check if IP changed (optional security measure)
+            $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            if (isset($_SESSION['login_ip']) && $_SESSION['login_ip'] !== $current_ip) {
+                error_log("Session IP mismatch. Original: " . $_SESSION['login_ip'] . ", Current: " . $current_ip);
+                // Uncomment the next line if you want strict IP validation
+                // return false;
+            }
+
+            return true;
         }
-
-        // Check if session is too old (24 hours)
-        if ((time() - $_SESSION['login_time']) > 86400) {
-            return false;
-        }
-
-        // Check if IP changed (optional security measure)
-        $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        if (isset($_SESSION['login_ip']) && $_SESSION['login_ip'] !== $current_ip) {
-            error_log("Session IP mismatch. Original: " . $_SESSION['login_ip'] . ", Current: " . $current_ip);
-            // Uncomment the next line if you want strict IP validation
-            // return false;
-        }
-
-        return true;
-    }
-
     // Initialize clean OAuth session
-    function init_oauth_session(): void
-    {
-        // Clear any existing OAuth data
-        clear_oauth_session();
+        function init_oauth_session(): void {
+            // Clear any existing OAuth data
+            clear_oauth_session();
 
-        // Clear any error messages
-        unset($_SESSION['error']);
-    }
-
+            // Clear any error messages
+            unset($_SESSION['error']);
+        }
     // Checks if a user is currently logged in.
-    function is_logged_in(): bool
-    {
-        return isset($_SESSION["user"]);
-    }
-
+        function is_logged_in(): bool {
+            return isset($_SESSION["user"]);
+        }
     // Gets the current user's data from the session.
-    function get_user(): ?array
-    {
-        return $_SESSION["user"] ?? null;
-    }
+        function get_user(): ?array {
+            return $_SESSION["user"] ?? null;
+        }
 // </authentication>
 
 // <google-oauth>
     // Google OAuth - Configuration
-    function get_google_config(): array
-    {
-        $site_domain = SITE_DOMAIN;
-        $is_development =
-            $site_domain === 'localhost' ||
-            $_SERVER["SERVER_NAME"] === "localhost" ||
-            $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
-            $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+        function get_google_config(): array {
+            $site_domain = SITE_DOMAIN;
+            $is_development =
+                $site_domain === 'localhost' ||
+                $_SERVER["SERVER_NAME"] === "localhost" ||
+                $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+                $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
 
-        $redirect_uri = $is_development
-            ? 'http://localhost:8000/auth/google/callback'
-            : getenv('GOOGLE_REDIRECT_URI');
+            $redirect_uri = $is_development
+                ? 'http://localhost:8000/auth/google/callback'
+                : getenv('GOOGLE_REDIRECT_URI');
 
-        return [
-            'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
-            'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
-            'redirect_uri' => $redirect_uri,
-            'scope' => 'openid email profile'
-        ];
-    }
-
+            return [
+                'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
+                'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
+                'redirect_uri' => $redirect_uri,
+                'scope' => 'openid email profile'
+            ];
+        }
     // Google OAuth - Generate Google OAuth URL with state validation
-    function get_google_auth_url(): string
-    {
-        $config = get_google_config();
+        function get_google_auth_url(): string {
+            $config = get_google_config();
 
-        // Generate and store state for CSRF protection
-        $state = bin2hex(random_bytes(16));
-        $_SESSION['oauth_state'] = $state;
-        $_SESSION['oauth_timestamp'] = time();
+            // Generate and store state for CSRF protection
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['oauth_state'] = $state;
+            $_SESSION['oauth_timestamp'] = time();
 
-        $params = [
-            'client_id' => $config['client_id'],
-            'redirect_uri' => $config['redirect_uri'],
-            'scope' => $config['scope'],
-            'response_type' => 'code',
-            'access_type' => 'online',
-            'state' => $state,
-            'prompt' => 'select_account' // Force account selection to avoid cached sessions
-        ];
+            $params = [
+                'client_id' => $config['client_id'],
+                'redirect_uri' => $config['redirect_uri'],
+                'scope' => $config['scope'],
+                'response_type' => 'code',
+                'access_type' => 'online',
+                'state' => $state,
+                'prompt' => 'select_account' // Force account selection to avoid cached sessions
+            ];
 
-        return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
-    }
-
+            return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
+        }
     // Google OAuth - Exchange authorization code for access token with error handling
-    function exchange_code_for_token(string $code): ?array
-    {
-        $config = get_google_config();
+        function exchange_code_for_token(string $code): ?array {
+            $config = get_google_config();
 
-        $data = [
-            'client_id' => $config['client_id'],
-            'client_secret' => $config['client_secret'],
-            'code' => $code,
-            'grant_type' => 'authorization_code',
-            'redirect_uri' => $config['redirect_uri']
-        ];
+            $data = [
+                'client_id' => $config['client_id'],
+                'client_secret' => $config['client_secret'],
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $config['redirect_uri']
+            ];
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
 
-        if ($curl_error) {
-            error_log("Google OAuth token exchange cURL error: " . $curl_error);
-            return null;
-        }
-
-        if ($http_code === 200 && $response) {
-            $token_data = json_decode($response, true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($token_data['access_token'])) {
-                return $token_data;
+            if ($curl_error) {
+                error_log("Google OAuth token exchange cURL error: " . $curl_error);
+                return null;
             }
-            error_log("Google OAuth token exchange JSON decode error or missing access_token");
-        } else {
-            error_log("Google OAuth token exchange failed. HTTP Code: $http_code, Response: $response");
-        }
 
-        return null;
-    }
-
-    // Google OAuth - Get user information from Google with error handling
-    function get_google_user_info(string $access_token): ?array
-    {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://www.googleapis.com/oauth2/v2/userinfo');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $access_token]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
-
-        if ($curl_error) {
-            error_log("Google OAuth user info cURL error: " . $curl_error);
-            return null;
-        }
-
-        if ($http_code === 200 && $response) {
-            $user_data = json_decode($response, true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($user_data['email'])) {
-                return $user_data;
-            }
-            error_log("Google OAuth user info JSON decode error or missing email");
-        } else {
-            error_log("Google OAuth user info failed. HTTP Code: $http_code, Response: $response");
-        }
-
-        return null;
-    }
-
-    // Google OAuth - Create or update user from Google data
-    function create_or_update_google_user(array $google_user): ?array
-    {
-        $pdo = get_db_connection();
-
-        try {
-            // Check if user exists
-            $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
-            $stmt->execute([$google_user['id'], $google_user['email']]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($user) {
-                // Update existing user
-                $stmt = $pdo->prepare('
-                    UPDATE users
-                    SET google_id = ?, name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                ');
-                $stmt->execute([
-                    $google_user['id'],
-                    $google_user['name'],
-                    $google_user['email'],
-                    $google_user['picture'],
-                    $user['id']
-                ]);
-
-                // Return updated user data with role preserved
-                return [
-                    'id' => $user['id'],
-                    'google_id' => $google_user['id'],
-                    'name' => $google_user['name'],
-                    'email' => $google_user['email'],
-                    'picture' => $google_user['picture'],
-                    'role' => $user['role'] ?? 'user',
-                    'created_at' => $user['created_at'],
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
+            if ($http_code === 200 && $response) {
+                $token_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($token_data['access_token'])) {
+                    return $token_data;
+                }
+                error_log("Google OAuth token exchange JSON decode error or missing access_token");
             } else {
-                // Create new user with default role
-                $stmt = $pdo->prepare('
-                    INSERT INTO users (google_id, name, email, picture, role)
-                    VALUES (?, ?, ?, ?, ?)
-                ');
-                $stmt->execute([
-                    $google_user['id'],
-                    $google_user['name'],
-                    $google_user['email'],
-                    $google_user['picture'],
-                    'user'
-                ]);
-
-                $user_id = $pdo->lastInsertId();
-
-                // Return newly created user data
-                return [
-                    'id' => $user_id,
-                    'google_id' => $google_user['id'],
-                    'name' => $google_user['name'],
-                    'email' => $google_user['email'],
-                    'picture' => $google_user['picture'],
-                    'role' => 'user',
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
+                error_log("Google OAuth token exchange failed. HTTP Code: $http_code, Response: $response");
             }
-        } catch (PDOException $e) {
-            error_log('Database error in create_or_update_google_user: ' . $e->getMessage());
+
             return null;
         }
-    }
+    // Google OAuth - Get user information from Google with error handling
+        function get_google_user_info(string $access_token): ?array {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://www.googleapis.com/oauth2/v2/userinfo');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $access_token]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log("Google OAuth user info cURL error: " . $curl_error);
+                return null;
+            }
+
+            if ($http_code === 200 && $response) {
+                $user_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($user_data['email'])) {
+                    return $user_data;
+                }
+                error_log("Google OAuth user info JSON decode error or missing email");
+            } else {
+                error_log("Google OAuth user info failed. HTTP Code: $http_code, Response: $response");
+            }
+
+            return null;
+        }
+    // Google OAuth - Create or update user from Google data
+        function create_or_update_google_user(array $google_user): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                // Check if user exists
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
+                $stmt->execute([$google_user['id'], $google_user['email']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    // Update existing user
+                    $stmt = $pdo->prepare('
+                        UPDATE users
+                        SET google_id = ?, name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        $user['id']
+                    ]);
+
+                    // Return updated user data with role preserved
+                    return [
+                        'id' => $user['id'],
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => $user['role'] ?? 'user',
+                        'created_at' => $user['created_at'],
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                } else {
+                    // Create new user with default role
+                    $stmt = $pdo->prepare('
+                        INSERT INTO users (google_id, name, email, picture, role)
+                        VALUES (?, ?, ?, ?, ?)
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        'user'
+                    ]);
+
+                    $user_id = $pdo->lastInsertId();
+
+                    // Return newly created user data
+                    return [
+                        'id' => $user_id,
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => 'user',
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                }
+            } catch (PDOException $e) {
+                error_log('Database error in create_or_update_google_user: ' . $e->getMessage());
+                return null;
+            }
+        }
 // </google-oauth>
 
 // <view-initialization>
-    $errors = [];
-    $messages = [];
-    $user = get_user();
-    $pdo = get_db_connection();
+    // Initialization
+        $errors = [];
+        $messages = [];
+        $user = get_user();
+        $pdo = get_db_connection();
 // </view-initialization>
 
 // <oauth-flow>
-    $request_uri = $_SERVER['REQUEST_URI'];
-    $path = parse_url($request_uri, PHP_URL_PATH);
-    $path = trim($path, '/');
-
+    // File path
+        $request_uri = $_SERVER['REQUEST_URI'];
+        $path = parse_url($request_uri, PHP_URL_PATH);
+        $path = trim($path, '/');
     // Validate existing session
-    if (isset($_SESSION['user']) && !is_valid_session()) {
-        // Invalid session, clear it
-        $_SESSION = array();
-        session_destroy();
-        session_start();
-    }
-
+        if (isset($_SESSION['user']) && !is_valid_session()) {
+            // Invalid session, clear it
+            $_SESSION = [];
+            session_destroy();
+            session_start();
+        }
     // Handle OAuth state cleanup (manual trigger)
-    if (isset($_GET['clear_oauth'])) {
-        init_oauth_session();
-        header('Location: /');
-        exit;
-    }
-
+        if (isset($_GET['clear_oauth'])) {
+            init_oauth_session();
+            header('Location: /');
+            exit;
+        }
     // Handle Google OAuth callback
-    if (isset($_GET['code'])) {
-        $code = $_GET['code'];
-        $state = $_GET['state'] ?? '';
-        $error_param = $_GET['error'] ?? '';
+        if (isset($_GET['code'])) {
+            $code = $_GET['code'];
+            $state = $_GET['state'] ?? '';
+            $error_param = $_GET['error'] ?? '';
 
-        // Handle OAuth errors
-        if ($error_param) {
-            error_log("Google OAuth error: " . $error_param);
-            $errors[] = 'Authentication was cancelled or failed. Please try again.';
-        }
-        // Validate state parameter for CSRF protection
-        elseif (empty($state) || !isset($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
-            error_log("Google OAuth state validation failed. Expected: " . ($_SESSION['oauth_state'] ?? 'none') . ", Got: " . $state);
-            $errors[] = 'Invalid authentication state. Please try again.';
-        }
-        // Check if state is not too old (5 minutes max)
-        elseif (!isset($_SESSION['oauth_timestamp']) || (time() - $_SESSION['oauth_timestamp']) > 300) {
-            error_log("Google OAuth state expired. Timestamp: " . ($_SESSION['oauth_timestamp'] ?? 'none'));
-            $errors[] = 'Authentication session expired. Please try again.';
-        }
-        else {
-            // Clear OAuth state from session
-            unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+            // Handle OAuth errors
+            if ($error_param) {
+                error_log("Google OAuth error: " . $error_param);
+                $errors[] = 'Authentication was cancelled or failed. Please try again.';
+            }
+            // Validate state parameter for CSRF protection
+            elseif (empty($state) || !isset($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
+                error_log("Google OAuth state validation failed. Expected: " . ($_SESSION['oauth_state'] ?? 'none') . ", Got: " . $state);
+                $errors[] = 'Invalid authentication state. Please try again.';
+            }
+            // Check if state is not too old (5 minutes max)
+            elseif (!isset($_SESSION['oauth_timestamp']) || (time() - $_SESSION['oauth_timestamp']) > 300) {
+                error_log("Google OAuth state expired. Timestamp: " . ($_SESSION['oauth_timestamp'] ?? 'none'));
+                $errors[] = 'Authentication session expired. Please try again.';
+            }
+            else {
+                // Clear OAuth state from session
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
 
-            try {
-                // Exchange code for access token
-                $token_info = exchange_code_for_token($code);
+                try {
+                    // Exchange code for access token
+                    $token_info = exchange_code_for_token($code);
 
-                if (isset($token_info['access_token'])) {
-                    // Get user info from Google
-                    $user_data = get_google_user_info($token_info['access_token']);
+                    if (isset($token_info['access_token'])) {
+                        // Get user info from Google
+                        $user_data = get_google_user_info($token_info['access_token']);
 
-                    if ($user_data && isset($user_data['email'])) {
-                        // Save user to database and store in session
-                        $db_user = create_or_update_google_user($user_data);
+                        if ($user_data && isset($user_data['email'])) {
+                            // Save user to database and store in session
+                            $db_user = create_or_update_google_user($user_data);
 
-                        if ($db_user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
+                            if ($db_user) {
+                                // Regenerate session ID for security
+                                session_regenerate_id(true);
 
-                            $_SESSION['user'] = [
-                                'id' => $db_user['id'],
-                                'google_id' => $db_user['google_id'],
-                                'name' => $db_user['name'],
-                                'email' => $db_user['email'],
-                                'picture' => $db_user['picture'],
-                                'role' => $db_user['role'] ?? 'user',
-                                'created_at' => $db_user['created_at'],
-                                'updated_at' => $db_user['updated_at']
-                            ];
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                                $_SESSION['user'] = [
+                                    'id' => $db_user['id'],
+                                    'google_id' => $db_user['google_id'],
+                                    'name' => $db_user['name'],
+                                    'email' => $db_user['email'],
+                                    'picture' => $db_user['picture'],
+                                    'role' => $db_user['role'] ?? 'user',
+                                    'created_at' => $db_user['created_at'],
+                                    'updated_at' => $db_user['updated_at']
+                                ];
+                                $_SESSION['login_time'] = time();
+                                $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-                            // Redirect to dashboard
-                            redirect('/dashboard');
+                                // Redirect to dashboard
+                                redirect('/dashboard');
+                            } else {
+                                error_log("Failed to create/update user in database for email: " . $user_data['email']);
+                                $errors[] = 'Failed to create user account. Please try again.';
+                            }
                         } else {
-                            error_log("Failed to create/update user in database for email: " . $user_data['email']);
-                            $errors[] = 'Failed to create user account. Please try again.';
+                            error_log("Failed to get user info from Google or missing email");
+                            $errors[] = 'Failed to retrieve user information from Google. Please try again.';
                         }
                     } else {
-                        error_log("Failed to get user info from Google or missing email");
-                        $errors[] = 'Failed to retrieve user information from Google. Please try again.';
+                        error_log("Failed to exchange code for token");
+                        $errors[] = 'Failed to authenticate with Google. Please try again.';
                     }
-                } else {
-                    error_log("Failed to exchange code for token");
-                    $errors[] = 'Failed to authenticate with Google. Please try again.';
+                } catch (Exception $e) {
+                    error_log("Google OAuth exception: " . $e->getMessage());
+                    $errors[] = "Authentication failed. Please try again.";
                 }
-            } catch (Exception $e) {
-                error_log("Google OAuth exception: " . $e->getMessage());
-                $errors[] = "Authentication failed. Please try again.";
+            }
+
+            // Clean up OAuth session data on any error
+            if (!empty($errors)) {
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
             }
         }
-
-        // Clean up OAuth session data on any error
-        if (!empty($errors)) {
-            unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
-        }
-    }
-
     // Handle logout with comprehensive cleanup
-    if (isset($_GET['logout']) || $path === 'logout') {
-        // Clear all session data
-        $_SESSION = array();
+        if (isset($_GET['logout']) || $path === 'logout') {
+            // Clear all session data
+            $_SESSION = array();
 
-        // Delete session cookie if it exists
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params["path"], $params["domain"],
-                $params["secure"], $params["httponly"]
-            );
+            // Delete session cookie if it exists
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000,
+                    $params["path"], $params["domain"],
+                    $params["secure"], $params["httponly"]
+                );
+            }
+
+            // Clear any OAuth-related cookies
+            $cookie_options = [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => '',
+                'secure' => isset($_SERVER['HTTPS']),
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ];
+
+            // Clear potential OAuth cookies
+            setcookie('oauth_state', '', $cookie_options);
+            setcookie('google_auth', '', $cookie_options);
+
+            // Destroy session
+            session_destroy();
+
+            // Redirect with cache busting
+            header('Location: /?t=' . time());
+            exit;
         }
-
-        // Clear any OAuth-related cookies
-        $cookie_options = [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'domain' => '',
-            'secure' => isset($_SERVER['HTTPS']),
-            'httponly' => true,
-            'samesite' => 'Lax'
-        ];
-
-        // Clear potential OAuth cookies
-        setcookie('oauth_state', '', $cookie_options);
-        setcookie('google_auth', '', $cookie_options);
-
-        // Destroy session
-        session_destroy();
-
-        // Redirect with cache busting
-        header('Location: /?t=' . time());
-        exit;
-    }
 // </oauth-flow>
 
 // <routing>
     // Define available pages
-    $pages = [
-        '' => 'home',
-        'home' => 'home',
-        'about' => 'about',
-        'contact' => 'contact',
-        'dashboard' => 'dashboard',
-        'settings' => 'settings',
-        'auth/google/callback' => 'oauth_callback',
-        'logout' => 'logout'
-    ];
-
+        $pages = [
+            '' => 'home',
+            'home' => 'home',
+            'about' => 'about',
+            'contact' => 'contact',
+            'dashboard' => 'dashboard',
+            'settings' => 'settings',
+            'auth/google/callback' => 'oauth_callback',
+            'logout' => 'logout'
+        ];
     // Determine current page
-    $current_page = $pages[$path] ?? 'home';
-
+        $current_page = $pages[$path] ?? 'home';
     // Check if user is logged in
-    $is_logged_in = is_logged_in();
-
+        $is_logged_in = is_logged_in();
     // Protect dashboard page
-    if ($current_page === 'dashboard' && !$is_logged_in) {
-        redirect('/');
-    }
-
+        if ($current_page === 'dashboard' && !$is_logged_in) {
+            redirect('/');
+        }
     // Page titles
-    $page_titles = [
-        'home' => 'MonoPHP',
-        'about' => 'About - MonoPHP',
-        'contact' => 'Contact - MonoPHP',
-        'dashboard' => 'Dashboard - MonoPHP',
-        'settings' => 'Settings - MonoPHP'
-    ];
+        $page_titles = [
+            'home' => 'MonoPHP',
+            'about' => 'About - MonoPHP',
+            'contact' => 'Contact - MonoPHP',
+            'dashboard' => 'Dashboard - MonoPHP',
+            'settings' => 'Settings - MonoPHP'
+        ];
 // </routing>
-
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -925,404 +882,410 @@
     </style>
 </head>
 <body>
-
 <!-- <navigation>  -->
-    <?php
-        if ($current_page == 'home' || $current_page == 'about' || $current_page == 'contact') {
-            ?>
-            <!-- <navbar> -->
-                <style>
-                    #navbar {
-                        position: fixed;
-                        top: var(--space-lg);
-                        left: 50%;
-                        transform: translateX(-50%);
-                        z-index: var(--z-navbar);
-                        width: calc(100% - 40px);
-                        max-width: var(--container-xl);
-                        background-color: var(--bg-card);
-                        padding: var(--space-xs) var(--space-xs);
-                        backdrop-filter: blur(10px);
-                        -webkit-backdrop-filter: blur(10px);
-                        box-shadow: var(--shadow-sm);
-                        border-radius: var(--radius-lg);
-                        border: 1px solid var(--border-light);
-                        align-items: center;
-                        display: flex;
-                        justify-content: space-between;
-                    }
+    <!--// PHP IF Start-->
+        <?php if ($current_page == 'home' || $current_page == 'about' || $current_page == 'contact') { ?>
+    <!--// Navbar -->
+        <!--// Style-->
+            <style>
+            #navbar {
+                position: fixed;
+                top: var(--space-lg);
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: var(--z-navbar);
+                width: calc(100% - 40px);
+                max-width: var(--container-xl);
+                background-color: var(--bg-card);
+                padding: var(--space-xs) var(--space-xs);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                box-shadow: var(--shadow-sm);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-light);
+                align-items: center;
+                display: flex;
+                justify-content: space-between;
+            }
 
-                    #navbar .navbar-left {
-                        display: flex;
-                        align-items: center;
-                    }
-                    #navbar .navbar-left img {
-                        height: 32px;
-                        width: auto;
-                    }
+            #navbar .navbar-left {
+                display: flex;
+                align-items: center;
+            }
+            #navbar .navbar-left img {
+                height: 32px;
+                width: auto;
+            }
 
-                    #navbar .navbar-center {
-                        display: flex; align-items: center; gap: var(--space-xs);
-                    }
+            #navbar .navbar-center {
+                display: flex; align-items: center; gap: var(--space-xs);
+            }
 
-                    #navbar .menu-item {
-                        position: relative; display: flex; align-items: center;
-                    }
-                    #navbar a {
-                        color: var(--text-primary);
-                        text-decoration: none;
-                        padding: var(--space-sm) var(--space-md);
-                        font-weight: var(--font-medium);
-                        font-size: var(--text-sm);
-                        display: flex;
-                        align-items: center;
-                        gap: var(--space-xs);
-                    }
-                    #navbar a:hover {
-                        color: var(--text-link-hover);
-                    }
-                    #navbar a.active {
-                        color: var(--text-link-active);
-                    }
-                    #navbar a.dropdown::after {
-                        content: "▼";
-                        font-size: var(--text-xs);
-                        color: var(--text-primary);
-                    }
-                    #navbar a.dropdown:hover::after {
-                        color: var(--text-link-hover);
-                    }
-                    #navbar .dropdown-menu {
-                        position: absolute;
-                        top: 100%;
-                        left: 0;
-                        min-width: 220px;
-                        background: var(--bg-card);
-                        border-radius: var(--radius-md);
-                        padding: var(--space-sm) 0;
-                        box-shadow: var(--shadow-sm);
-                        border: 1px solid var(--border-light);
-                        opacity: 0;
-                        visibility: hidden;
-                        transform: translateY(-10px);
-                        transition: all var(--transition-base);
-                        z-index: var(--z-dropdown);
-                    }
-                    #navbar .menu-item:hover .dropdown-menu {
-                        opacity: 1;
-                        visibility: visible;
-                        transform: translateY(0);
-                    }
-                    #navbar .dropdown-menu a {
-                        padding: 12px 20px;
-                        font-size: var(--text-sm);
-                        color: var(--text-secondary);
-                        display: flex;
-                        align-items: center;
-                        gap: var(--space-sm);
-                        border-radius: 0;
-                    }
-                    #navbar .dropdown-menu a:hover {
-                        background-color: var(--bg-hover); color: var(--text-link-hover);
-                    }
-                    #navbar .dropdown-menu a .icon {
-                        width: 32px; height: 32px; border-radius: 8px;
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 16px; flex-shrink: 0;
-                        background-color: var(--primary-transparent);
-                    }
-                    #navbar .dropdown-item-title {
-                        font-weight: var(--font-semibold);
-                    }
-                    #navbar .dropdown-item-description {
-                        font-size: var(--text-sm);
-                        color: var(--text-muted);
-                    }
+            #navbar .menu-item {
+                position: relative; display: flex; align-items: center;
+            }
+            #navbar a {
+                color: var(--text-primary);
+                text-decoration: none;
+                padding: var(--space-sm) var(--space-md);
+                font-weight: var(--font-medium);
+                font-size: var(--text-sm);
+                display: flex;
+                align-items: center;
+                gap: var(--space-xs);
+            }
+            #navbar a:hover {
+                color: var(--text-link-hover);
+            }
+            #navbar a.active {
+                color: var(--text-link-active);
+            }
+            #navbar a.dropdown::after {
+                content: "▼";
+                font-size: var(--text-xs);
+                color: var(--text-primary);
+            }
+            #navbar a.dropdown:hover::after {
+                color: var(--text-link-hover);
+            }
+            #navbar .dropdown-menu {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                min-width: 220px;
+                background: var(--bg-card);
+                border-radius: var(--radius-md);
+                padding: var(--space-sm) 0;
+                box-shadow: var(--shadow-sm);
+                border: 1px solid var(--border-light);
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-10px);
+                transition: all var(--transition-base);
+                z-index: var(--z-dropdown);
+            }
+            #navbar .menu-item:hover .dropdown-menu {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+            #navbar .dropdown-menu a {
+                padding: 12px 20px;
+                font-size: var(--text-sm);
+                color: var(--text-secondary);
+                display: flex;
+                align-items: center;
+                gap: var(--space-sm);
+                border-radius: 0;
+            }
+            #navbar .dropdown-menu a:hover {
+                background-color: var(--bg-hover); color: var(--text-link-hover);
+            }
+            #navbar .dropdown-menu a .icon {
+                width: 32px; height: 32px; border-radius: 8px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 16px; flex-shrink: 0;
+                background-color: var(--primary-transparent);
+            }
+            #navbar .dropdown-item-title {
+                font-weight: var(--font-semibold);
+            }
+            #navbar .dropdown-item-description {
+                font-size: var(--text-sm);
+                color: var(--text-muted);
+            }
 
-                    #navbar .navbar-right {
-                        display: flex; align-items: center; gap: var(--space-xs);
-                    }
-                    #navbar a.button {
-                        background: var(--primary);
-                        color: var(--white) !important;
-                        text-align: center;
-                        padding: 12px 24px; border-radius: var(--radius-md);
-                        font-weight: var(--font-bold); font-size: 14px;
-                        line-height: var(--leading-relaxed);
-                        padding: var(--space-xs) var(--space-md);
-                        /* box-shadow: 0 4px 14px 0 rgba(79, 124, 255, 0.3); */
-                        box-shadow: var(--button-shadow);
-                        transition: var(--transition-base);
-                        border: none;
-                    }
-                    #navbar a.button:hover {
-                        background: var(--primary-dark);
-                        color: var(--white) !important;
-                        transform: translateY(-2px);
-                        box-shadow: var(--button-shadow);
-                    }
+            #navbar .navbar-right {
+                display: flex; align-items: center; gap: var(--space-xs);
+            }
+            #navbar a.button {
+                background: var(--primary);
+                color: var(--white) !important;
+                text-align: center;
+                padding: 12px 24px; border-radius: var(--radius-md);
+                font-weight: var(--font-bold); font-size: 14px;
+                line-height: var(--leading-relaxed);
+                padding: var(--space-xs) var(--space-md);
+                /* box-shadow: 0 4px 14px 0 rgba(79, 124, 255, 0.3); */
+                box-shadow: var(--button-shadow);
+                transition: var(--transition-base);
+                border: none;
+            }
+            #navbar a.button:hover {
+                background: var(--primary-dark);
+                color: var(--white) !important;
+                transform: translateY(-2px);
+                box-shadow: var(--button-shadow);
+            }
 
-                    @media (max-width: 768px) {
-                      #navbar {
-                        flex-wrap: wrap;
-                        align-items: center;
-                        gap: var(--space-xs);
-                        /* Ensure horizontal margins on mobile */
-                        left: 0;
-                        right: 0;
-                        transform: none;
-                        width: auto;
-                        margin: 0 20px; /* keeps the floating look on mobile */
-                      }
-                      #navbar .navbar-left {
-                        order: 1;
-                      }
-                      #navbar .navbar-right {
-                        order: 2;
-                        margin-left: auto;
-                      }
-                      #navbar .navbar-center {
-                        order: 3;
-                        width: 100%;
-                        display: flex;
-                        justify-content: center;
-                        gap: var(--space-xs);
-                        margin-top: var(--space-xs);
-                      }
-                    }
+            @media (max-width: 768px) {
+                #navbar {
+                flex-wrap: wrap;
+                align-items: center;
+                gap: var(--space-xs);
+                /* Ensure horizontal margins on mobile */
+                left: 0;
+                right: 0;
+                transform: none;
+                width: auto;
+                margin: 0 20px; /* keeps the floating look on mobile */
+                }
+                #navbar .navbar-left {
+                order: 1;
+                }
+                #navbar .navbar-right {
+                order: 2;
+                margin-left: auto;
+                }
+                #navbar .navbar-center {
+                order: 3;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                gap: var(--space-xs);
+                margin-top: var(--space-xs);
+                }
+            }
 
-                    @media (max-width: 1024px) {
-                      #navbar {
-                        left: 0;
-                        right: 0;
-                        transform: none;
-                        width: auto;
-                        margin: 0 20px; /* horizontal margins on tablet */
-                      }
-                    }
+            @media (max-width: 1024px) {
+                #navbar {
+                left: 0;
+                right: 0;
+                transform: none;
+                width: auto;
+                margin: 0 20px; /* horizontal margins on tablet */
+                }
+            }
 
-                    @media (max-width: 1280px) {
-                      #navbar {
-                        left: 0;
-                        right: 0;
-                        transform: none;
-                        width: auto;
-                        margin: 0 20px; /* horizontal margins on tablet */
-                      }
-                    }
+            @media (max-width: 1280px) {
+                #navbar {
+                left: 0;
+                right: 0;
+                transform: none;
+                width: auto;
+                margin: 0 20px; /* horizontal margins on tablet */
+                }
+            }
 
-                    @media (max-width: 1536px) {
-                      #navbar {
-                        left: 0;
-                        right: 0;
-                        transform: none;
-                        width: auto;
-                        margin: 0 20px; /* horizontal margins on tablet */
-                      }
-                    }
-                </style>
+            @media (max-width: 1536px) {
+                #navbar {
+                left: 0;
+                right: 0;
+                transform: none;
+                width: auto;
+                margin: 0 20px; /* horizontal margins on tablet */
+                }
+            }
+            </style>
+        <!--// HTML-->
+            <nav id="navbar">
+                <div class="navbar-left">
+                    <a href="/">
+                        <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
+                    </a>
+                </div>
 
-                <nav id="navbar">
-                    <div class="navbar-left">
-                        <a href="/">
-                            <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
-                        </a>
+                <div class="navbar-center">
+                    <div class="menu-item">
+                        <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
                     </div>
-
-                    <div class="navbar-center">
-                        <div class="menu-item">
-                            <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
-                        </div>
-                        <div class="menu-item">
-                            <a href="#" class="dropdown">Fitur</a>
-                            <div class="dropdown-menu">
-                                <a href="/home">
-                                    <div class="icon">🔍</div>
-                                    <div>
-                                        <div class="dropdown-item-title">All Features</div>
-                                        <div class="dropdown-item-description">Complete overview</div>
-                                    </div>
-                                </a>
-                                <a href="/about">
-                                    <div class="icon">🧩</div>
-                                    <div>
-                                        <div class="dropdown-item-title">Components</div>
-                                        <div class="dropdown-item-description">Reusable building blocks</div>
-                                    </div>
-                                </a>
-                                <a href="#">
-                                    <div class="icon">📋</div>
-                                    <div>
-                                        <div class="dropdown-item-title">Templates</div>
-                                        <div class="dropdown-item-description">Ready-made designs</div>
-                                    </div>
-                                </a>
-                                <a href="#">
-                                    <div class="icon">🔗</div>
-                                    <div>
-                                        <div class="dropdown-item-title">Integrations</div>
-                                        <div class="dropdown-item-description">Connect your tools</div>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="menu-item">
-                            <a href="/">Artikel</a>
-                        </div>
-                        <div class="menu-item">
-                            <a href="/">Kontak</a>
-                        </div>
-                    </div>
-
-                    <div class="navbar-right">
-                        <?php if ($is_logged_in): ?>
-                            <a href="/dashboard" class="button">Dashboard</a>
-                        <?php else: ?>
-                            <?php
-                                // Generate OAuth URL only if not already set in session
-                                if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
-                                    $_SESSION['google_auth_url'] = get_google_auth_url();
-                                }
-                            ?>
-                            <a href="<?= e($_SESSION['google_auth_url']); ?>">
-                                <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
+                    <div class="menu-item">
+                        <a href="#" class="dropdown">Fitur</a>
+                        <div class="dropdown-menu">
+                            <a href="/home">
+                                <div class="icon">🔍</div>
+                                <div>
+                                    <div class="dropdown-item-title">All Features</div>
+                                    <div class="dropdown-item-description">Complete overview</div>
+                                </div>
                             </a>
-                        <?php endif; ?>
+                            <a href="/about">
+                                <div class="icon">🧩</div>
+                                <div>
+                                    <div class="dropdown-item-title">Components</div>
+                                    <div class="dropdown-item-description">Reusable building blocks</div>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="icon">📋</div>
+                                <div>
+                                    <div class="dropdown-item-title">Templates</div>
+                                    <div class="dropdown-item-description">Ready-made designs</div>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="icon">🔗</div>
+                                <div>
+                                    <div class="dropdown-item-title">Integrations</div>
+                                    <div class="dropdown-item-description">Connect your tools</div>
+                                </div>
+                            </a>
+                        </div>
                     </div>
-                </nav>
-            <!-- </navbar> -->
-            <?php
-        } else {
-        ?>
-
-            <!-- <sidebar> -->
-                <style>
-                    .sidebar {
-                        width: 250px;
-                        background: #f8f9fa;
-                        color: #333;
-                        display: flex;
-                        flex-direction: column;
-                        position: fixed;
-                        height: 100vh;
-                        left: 0;
-                        top: 0;
-                        z-index: 1000;
-                    }
-
-                    .sidebar-header {
-                        padding: 2rem 1.5rem 1rem 1.5rem;
-                        border-bottom: none;
-                    }
-
-                    .sidebar-header h3 {
-                        margin: 0;
-                        color: #333;
-                        font-weight: 600;
-                        font-size: 1.25rem;
-                    }
-
-                    .sidebar-nav {
-                        flex: 1;
-                        padding: 1rem 0;
-                    }
-
-                    .sidebar-nav ul {
-                        list-style: none;
-                        margin: 0;
-                        padding: 0;
-                    }
-
-                    .sidebar-nav li {
-                        margin: 0.25rem 0;
-                    }
-
-                    .nav-link {
-                        display: flex;
-                        align-items: center;
-                        padding: 0.75rem 1.5rem;
-                        color: #6c757d;
-                        text-decoration: none;
-                        transition: all 0.2s ease;
-                        border-radius: 0 25px 25px 0;
-                        margin-right: 1rem;
-                        font-weight: 500;
-                    }
-
-                    .nav-link:hover {
-                        background: #e9ecef;
-                        color: #495057;
-                    }
-
-                    .nav-link.active {
-                        background: #007bff;
-                        color: white;
-                    }
-
-                    .nav-link .nav-icon {
-                        margin-right: 0.75rem;
-                        font-size: 1.1rem;
-                    }
-
-                    .sidebar-footer {
-                        padding: 1.5rem;
-                        border-top: 1px solid #e9ecef;
-                    }
-
-                    .sidebar-footer .btn {
-                        width: 100%;
-                        padding: 0.75rem;
-                        background: #dc3545;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        text-decoration: none;
-                        display: inline-block;
-                        text-align: center;
-                        font-weight: 500;
-                        transition: background 0.2s ease;
-                    }
-
-                    .sidebar-footer .btn:hover {
-                        background: #c82333;
-                    }
-                </style>
-
-                <div class="sidebar">
-                    <div class="sidebar-header">
-                        <h3>Dashboard</h3>
+                    <div class="menu-item">
+                        <a href="/">Artikel</a>
                     </div>
-                    <nav class="sidebar-nav">
-                        <ul>
-                            <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
-                        </ul>
-                    </nav>
-                    <div class="sidebar-footer">
-                        <a href="/logout" class="btn btn-danger">Logout</a>
+                    <div class="menu-item">
+                        <a href="/">Kontak</a>
                     </div>
                 </div>
-            <!-- </sidebar> -->
 
-        <?php
-        }
-    ?>
+                <div class="navbar-right">
+                    <?php if ($is_logged_in): ?>
+                        <a href="/dashboard" class="button">Dashboard</a>
+                    <?php else: ?>
+                        <?php
+                            // Generate OAuth URL only if not already set in session
+                            if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
+                                $_SESSION['google_auth_url'] = get_google_auth_url();
+                            }
+                        ?>
+                        <a href="<?= e($_SESSION['google_auth_url']); ?>">
+                            <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </nav>
+    <!--// PHP IF Else-->
+        <?php } else { ?>
+    <!--// Sidebar-->
+        <!--// Style-->
+            <style>
+            .sidebar {
+                width: 250px;
+                background: #f8f9fa;
+                color: #333;
+                display: flex;
+                flex-direction: column;
+                position: fixed;
+                height: 100vh;
+                left: 0;
+                top: 0;
+                z-index: 1000;
+            }
+
+            .sidebar-header {
+                padding: 2rem 1.5rem 1rem 1.5rem;
+                border-bottom: none;
+            }
+
+            .sidebar-header h3 {
+                margin: 0;
+                color: #333;
+                font-weight: 600;
+                font-size: 1.25rem;
+            }
+
+            .sidebar-nav {
+                flex: 1;
+                padding: 1rem 0;
+            }
+
+            .sidebar-nav ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            .sidebar-nav li {
+                margin: 0.25rem 0;
+            }
+
+            .nav-link {
+                display: flex;
+                align-items: center;
+                padding: 0.75rem 1.5rem;
+                color: #6c757d;
+                text-decoration: none;
+                transition: all 0.2s ease;
+                border-radius: 0 25px 25px 0;
+                margin-right: 1rem;
+                font-weight: 500;
+            }
+
+            .nav-link:hover {
+                background: #e9ecef;
+                color: #495057;
+            }
+
+            .nav-link.active {
+                background: #007bff;
+                color: white;
+            }
+
+            .nav-link .nav-icon {
+                margin-right: 0.75rem;
+                font-size: 1.1rem;
+            }
+
+            .sidebar-footer {
+                padding: 1.5rem;
+                border-top: 1px solid #e9ecef;
+            }
+
+            .sidebar-footer .btn {
+                width: 100%;
+                padding: 0.75rem;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                text-decoration: none;
+                display: inline-block;
+                text-align: center;
+                font-weight: 500;
+                transition: background 0.2s ease;
+            }
+
+            .sidebar-footer .btn:hover {
+                background: #c82333;
+            }
+            </style>
+        <!--// HTML-->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h3>Dashboard</h3>
+                </div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
+                    </ul>
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="/logout" class="btn btn-danger">Logout</a>
+                </div>
+            </div>
+    <!--PHP IF End-->
+        <?php } ?>
 <!-- </navigation>  -->
 
+<!-- <public-container>  -->
     <div class="public-container">
-
+        <!--Navbar-->
+        <!--Public Page-->
+            <!--Home Page-->
+            <!--About Page-->
+            <!--Contact Page-->
+            <!--Blog Page-->
+            <!--404 Page-->
+        <!--Footer-->
     </div>
+<!-- </public-container>  -->
 
+<!-- <dashboard-container>  -->
     <div class="dashboard-container">
 
     </div>
+<!-- </dashboard-container>  -->
+
 
 
     <div class="container">
@@ -1567,8 +1530,8 @@
                 </section>
                 <!-- </hero section -->
 
-                <?php break; ?>
-            <?php case 'about': ?>
+                <?php break;
+            case 'about': ?>
                 <div class="content">
                     <h2>About MonoPHP</h2>
                     <p>MonoPHP is a minimalist PHP framework inspired by the philosophy of keeping things simple and effective. Built with modern web development practices in mind, it provides just enough structure to build robust applications without the bloat.</p>
