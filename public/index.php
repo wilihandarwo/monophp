@@ -1399,66 +1399,6 @@
                 <section class="content">
                     <h2>Contact Us</h2>
                     <p>Have questions about MonoPHP? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-                        <div>
-                            <form method="POST" action="/contact" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                <?php echo csrf_field(); ?>
-
-                                <div style="margin-bottom: 1rem;">
-                                    <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Name</label>
-                                    <input type="text" id="name" name="name" required
-                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
-                                </div>
-
-                                <div style="margin-bottom: 1rem;">
-                                    <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
-                                    <input type="email" id="email" name="email" required
-                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
-                                </div>
-
-                                <div style="margin-bottom: 1rem;">
-                                    <label for="subject" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Subject</label>
-                                    <input type="text" id="subject" name="subject" required
-                                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
-                                </div>
-
-                                <div style="margin-bottom: 1.5rem;">
-                                    <label for="message" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Message</label>
-                                    <textarea id="message" name="message" rows="5" required
-                                            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; resize: vertical;"></textarea>
-                                </div>
-
-                                <button type="submit" class="btn" style="width: 100%;">Send Message</button>
-                            </form>
-                        </div>
-
-                        <div>
-                            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: fit-content;">
-                                <h3 style="margin-bottom: 1rem; color: #333;">Get in Touch</h3>
-
-                                <div style="margin-bottom: 1.5rem;">
-                                    <h4 style="margin-bottom: 0.5rem; color: #333;">📧 Email</h4>
-                                    <p style="margin: 0; color: #666;">hello@monophp.dev</p>
-                                </div>
-
-                                <div style="margin-bottom: 1.5rem;">
-                                    <h4 style="margin-bottom: 0.5rem; color: #333;">💬 Community</h4>
-                                    <p style="margin: 0; color: #666;">Join our community discussions on GitHub</p>
-                                </div>
-
-                                <div style="margin-bottom: 1.5rem;">
-                                    <h4 style="margin-bottom: 0.5rem; color: #333;">📚 Documentation</h4>
-                                    <p style="margin: 0; color: #666;">Check out our comprehensive documentation and examples</p>
-                                </div>
-
-                                <div>
-                                    <h4 style="margin-bottom: 0.5rem; color: #333;">🐛 Bug Reports</h4>
-                                    <p style="margin: 0; color: #666;">Found a bug? Please report it on our GitHub issues page</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </section>
         <!--404 Page-->
             <?php break; default:?>
@@ -1607,7 +1547,6 @@
             .dashboard-content-wrapper {
                 background: white;
                 border-radius: 16px;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.12);
                 border: 1px solid #e9ecef;
                 padding: 2rem;
                 height: calc(100vh - 6rem);
