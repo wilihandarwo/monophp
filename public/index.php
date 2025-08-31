@@ -891,7 +891,7 @@
 </head>
 <body>
 
-<!--LAYOUT: public pages-->
+<!--VIEW: public pages-->
 <?php if ($is_public_page) { ?>
 <!-- <public-container>  -->
     <div class="public-container" style="max-width: var(--container-2xl); margin: var(--space-4xl) auto; padding: var(--space-xl);">
@@ -1471,266 +1471,262 @@
     </div>
 <!-- </public-container>  -->
 
-<!--LAYOUT: dashboard pages-->
+<!--VIEW: dashboard pages-->
 <?php } elseif($is_dashboard_page) { ?>
 <!-- <dashboard-container>  -->
     <div class="dashboard-container">
-        <!--Sidebar-->
-            <!--// Sidebar Style-->
-                <style>
-                .sidebar {
-                    width: 250px;
-                    background: #f8f9fa;
-                    color: #333;
-                    display: flex;
-                    flex-direction: column;
-                    position: fixed;
-                    height: 100vh;
-                    left: 0;
-                    top: 0;
-                    z-index: 1000;
-                }
-
-                .sidebar-header {
-                    padding: 2rem 1.5rem 1rem 1.5rem;
-                    border-bottom: none;
-                }
-
-                .sidebar-header h3 {
-                    margin: 0;
-                    color: #333;
-                    font-weight: 600;
-                    font-size: 1.25rem;
-                }
-
-                .sidebar-nav {
-                    flex: 1;
-                    padding: 1rem 0;
-                }
-
-                .sidebar-nav ul {
-                    list-style: none;
-                    margin: 0;
-                    padding: 0;
-                }
-
-                .sidebar-nav li {
-                    margin: 0.25rem 0;
-                }
-
-                .nav-link {
-                    display: flex;
-                    align-items: center;
-                    padding: 0.75rem 1.5rem;
-                    color: #6c757d;
-                    text-decoration: none;
-                    transition: all 0.2s ease;
-                    border-radius: 0 25px 25px 0;
-                    margin-right: 1rem;
-                    font-weight: 500;
-                }
-
-                .nav-link:hover {
-                    background: #e9ecef;
-                    color: #495057;
-                }
-
-                .nav-link.active {
-                    background: #007bff;
-                    color: white;
-                }
-
-                .nav-link .nav-icon {
-                    margin-right: 0.75rem;
-                    font-size: 1.1rem;
-                }
-
-                .sidebar-footer {
-                    padding: 1.5rem;
-                    border-top: 1px solid #e9ecef;
-                }
-
-                .sidebar-footer .btn {
-                    width: 100%;
-                    padding: 0.75rem;
-                    background: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    text-decoration: none;
-                    display: inline-block;
-                    text-align: center;
-                    font-weight: 500;
-                    transition: background 0.2s ease;
-                }
-
-                .sidebar-footer .btn:hover {
-                    background: #c82333;
-                }
-                </style>
-            <!--// Sidebar HTML-->
-                <div class="sidebar">
-                    <div class="sidebar-header">
-                        <h3>Dashboard</h3>
-                    </div>
-                    <nav class="sidebar-nav">
-                        <ul>
-                            <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
-                            <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
-                        </ul>
-                    </nav>
-                    <div class="sidebar-footer">
-                        <a href="/logout" class="btn btn-danger">Logout</a>
-                    </div>
-                </div>
-        <!--Dashboard Page-->
-        <?php switch ($current_page) { case 'dashboard':
-            // Ensure user is logged in (this check is also done in routing)
-            if (!$is_logged_in) {
-                redirect('/');
+    <!--Sidebar-->
+        <!--// Sidebar Style-->
+            <style>
+            .sidebar {
+                width: 250px;
+                background: #f8f9fa;
+                color: #333;
+                display: flex;
+                flex-direction: column;
+                position: fixed;
+                height: 100vh;
+                left: 0;
+                top: 0;
+                z-index: 1000;
             }
 
-            $user = $_SESSION['user'];
-            ?>
+            .sidebar-header {
+                padding: 2rem 1.5rem 1rem 1.5rem;
+                border-bottom: none;
+            }
 
-            <style>
-                .dashboard-content {
-                    flex: 1;
-                    margin-left: 250px;
-                    padding: 1rem 0rem 1rem 1rem;
-                    position: relative;
-                    top: 0;
-                    height: 100vh;
-                    background: #f8f9fa;
-                    overflow: hidden;
-                }
+            .sidebar-header h3 {
+                margin: 0;
+                color: #333;
+                font-weight: 600;
+                font-size: 1.25rem;
+            }
 
-                .dashboard-content-wrapper {
-                    background: white;
-                    border-radius: 16px;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-                    border: 1px solid #e9ecef;
-                    padding: 2rem;
-                    height: calc(100vh - 6rem);
-                    overflow-y: auto;
-                }
+            .sidebar-nav {
+                flex: 1;
+                padding: 1rem 0;
+            }
 
-                /* Override container margin for dashboard layout */
-                .container {
-                    margin: 0 auto !important;
-                    padding: 0 !important;
-                    max-width: none !important;
-                }
+            .sidebar-nav ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
 
-                .dashboard-header {
-                    margin-bottom: 2rem;
-                    padding-bottom: 1rem;
-                    border-bottom: 1px solid #e9ecef;
-                }
+            .sidebar-nav li {
+                margin: 0.25rem 0;
+            }
 
-                .dashboard-header h2 {
-                    margin: 0 0 0.5rem 0;
-                    color: #333;
-                    font-weight: 600;
-                    font-size: 1.75rem;
-                }
+            .nav-link {
+                display: flex;
+                align-items: center;
+                padding: 0.75rem 1.5rem;
+                color: #6c757d;
+                text-decoration: none;
+                transition: all 0.2s ease;
+                border-radius: 0 25px 25px 0;
+                margin-right: 1rem;
+                font-weight: 500;
+            }
 
-                .dashboard-header p {
-                    margin: 0;
-                    color: #6c757d;
-                    font-size: 1rem;
-                }
+            .nav-link:hover {
+                background: #e9ecef;
+                color: #495057;
+            }
 
-                .dashboard-cards {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                    gap: 1.5rem;
-                    margin-bottom: 2rem;
-                }
+            .nav-link.active {
+                background: #007bff;
+                color: white;
+            }
 
-                .dashboard-card {
-                    background: #f8f9fa;
-                    padding: 2rem;
-                    border-radius: 12px;
-                    border: 1px solid #e9ecef;
-                    transition: transform 0.2s ease, background-color 0.2s ease;
-                }
+            .nav-link .nav-icon {
+                margin-right: 0.75rem;
+                font-size: 1.1rem;
+            }
 
-                .dashboard-card:hover {
-                    transform: translateY(-2px);
-                    background: white;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                }
+            .sidebar-footer {
+                padding: 1.5rem;
+                border-top: 1px solid #e9ecef;
+            }
 
-                .card-header {
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 1rem;
-                }
+            .sidebar-footer .btn {
+                width: 100%;
+                padding: 0.75rem;
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                text-decoration: none;
+                display: inline-block;
+                text-align: center;
+                font-weight: 500;
+                transition: background 0.2s ease;
+            }
 
-                .card-icon {
-                    width: 40px;
-                    height: 40px;
-                    background: #007bff;
-                    border-radius: 8px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    margin-right: 1rem;
-                    font-size: 1.2rem;
-                }
-
-                .card-title {
-                    margin: 0;
-                    color: #333;
-                    font-weight: 600;
-                    font-size: 1.1rem;
-                }
-
-                .card-content {
-                    color: #6c757d;
-                    line-height: 1.6;
-                }
-
-                .content-body {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                    border: 1px solid #e9ecef;
-                }
-
-                .placeholder-content {
-                    text-align: center;
-                    padding: 3rem;
-                    color: #6c757d;
-                }
-
-                @media (max-width: 768px) {
-                    .sidebar {
-                        width: 100%;
-                        height: auto;
-                        position: relative;
-                    }
-
-                    .dashboard-content {
-                        margin-left: 0;
-                        padding: 1rem;
-                    }
-
-                    .dashboard-layout {
-                        flex-direction: column;
-                    }
-                }
+            .sidebar-footer .btn:hover {
+                background: #c82333;
+            }
             </style>
-            <!-- Main Content -->
+        <!--// Sidebar HTML-->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h3>Dashboard</h3>
+                </div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
+                    </ul>
+                </nav>
+                <div class="sidebar-footer">
+                    <a href="/logout" class="btn btn-danger">Logout</a>
+                </div>
+            </div>
+    <!--Dashboard Page-->
+        <!--Style-->
+            <style>
+            .dashboard-content {
+                flex: 1;
+                margin-left: 250px;
+                padding: 1rem 0rem 1rem 1rem;
+                position: relative;
+                top: 0;
+                height: 100vh;
+                background: #f8f9fa;
+                overflow: hidden;
+            }
+
+            .dashboard-content-wrapper {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+                border: 1px solid #e9ecef;
+                padding: 2rem;
+                height: calc(100vh - 6rem);
+                overflow-y: auto;
+            }
+
+            /* Override container margin for dashboard layout */
+            .container {
+                margin: 0 auto !important;
+                padding: 0 !important;
+                max-width: none !important;
+            }
+
+            .dashboard-header {
+                margin-bottom: 2rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #e9ecef;
+            }
+
+            .dashboard-header h2 {
+                margin: 0 0 0.5rem 0;
+                color: #333;
+                font-weight: 600;
+                font-size: 1.75rem;
+            }
+
+            .dashboard-header p {
+                margin: 0;
+                color: #6c757d;
+                font-size: 1rem;
+            }
+
+            .dashboard-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .dashboard-card {
+                background: #f8f9fa;
+                padding: 2rem;
+                border-radius: 12px;
+                border: 1px solid #e9ecef;
+                transition: transform 0.2s ease, background-color 0.2s ease;
+            }
+
+            .dashboard-card:hover {
+                transform: translateY(-2px);
+                background: white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            }
+
+            .card-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
+
+            .card-icon {
+                width: 40px;
+                height: 40px;
+                background: #007bff;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 1rem;
+                font-size: 1.2rem;
+            }
+
+            .card-title {
+                margin: 0;
+                color: #333;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+
+            .card-content {
+                color: #6c757d;
+                line-height: 1.6;
+            }
+
+            .content-body {
+                background: white;
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                border: 1px solid #e9ecef;
+            }
+
+            .placeholder-content {
+                text-align: center;
+                padding: 3rem;
+                color: #6c757d;
+            }
+
+            @media (max-width: 768px) {
+                .sidebar {
+                    width: 100%;
+                    height: auto;
+                    position: relative;
+                }
+
+                .dashboard-content {
+                    margin-left: 0;
+                    padding: 1rem;
+                }
+
+                .dashboard-layout {
+                    flex-direction: column;
+                }
+            }
+            </style>
+        <!--Dashboard Page-->
+            <?php switch ($current_page) { case 'dashboard':
+                if (!$is_logged_in) {redirect('/');}
+                $user = $_SESSION['user'];
+            ?>
             <div class="dashboard-content">
                 <div class="dashboard-content-wrapper">
                     <div class="dashboard-header">
@@ -1943,39 +1939,36 @@
                 </div>
             </div>
         <!--Settings Page-->
-        <?php break; case 'settings':
-        // Ensure user is logged in (this check is also done in routing)
-        if (!$is_logged_in) {
-            redirect('/');
-        }
-
-        $user = $_SESSION['user'];
-        ?>
-        <!-- Main Content -->
-        <div class="dashboard-content">
-            <div class="dashboard-header">
-                <h2>Settings, <?= e($user['name']); ?>!</h2>
-                <p>Here's what's happening with your account today.</p>
-            </div>
-            <div class="content-body">
-                <!-- Content will go here -->
-                <div class="placeholder-content">
-                    <p>Main content area - ready for your content!</p>
+            <?php break; case 'settings':
+            if (!$is_logged_in) {
+                redirect('/');
+            }
+            $user = $_SESSION['user'];
+            ?>
+                <!-- Main Content -->
+                <div class="dashboard-content">
+                    <div class="dashboard-header">
+                        <h2>Settings, <?= e($user['name']); ?>!</h2>
+                        <p>Here's what's happening with your account today.</p>
+                    </div>
+                    <div class="content-body">
+                        <!-- Content will go here -->
+                        <div class="placeholder-content">
+                            <p>Main content area - ready for your content!</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
         <!--404 Page-->
-        <?php break; default:?>
-        <div>
-            Error 404
-        </div>
-        <?php } ?>
-        <!--Footer Page-->
-
+            <?php break; default:?>
+            <div>
+                Error 404
+            </div>
+            <?php } ?>
+    <!--Footer Page-->
     </div>
 <!-- </dashboard-container>  -->
 
-<!--LAYOUT: other pages-->
+<!--VIEW: other pages-->
 <?php } else { ?>
 <!-- <other-container>  -->
     <div class="other-container">
