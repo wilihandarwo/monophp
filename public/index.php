@@ -1751,41 +1751,90 @@
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
-                                <li><a href="#" class="nav-link">Daftar User</a></li>
-                                <li><a href="#" class="nav-link">Tambah User</a></li>
-                                <li><a href="#" class="nav-link">Role & Permission</a></li>
+                                <li><a href="#" class="nav-link">Admin dan Karyawan</a></li>
+                                <li><a href="#" class="nav-link">Customer</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-store"></i>Stock Emas</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Kepemilikan Barang</a></li>
+                                <li><a href="#" class="nav-link">Jual & Beli</a></li>
+                                <li><a href="#" class="nav-link">Biaya Operasional</a></li>
+                                <li><a href="#" class="nav-link">Biaya Non Operasional</a></li>
                             </ul>
                         </li>
 
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-clipboard-list"></i>Produk</span>
+                                <span><i class="fas fa-hand-holding-dollar"></i>Buyback Emas</span>
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
-                                <li><a href="#" class="nav-link">Daftar Produk</a></li>
-                                <li><a href="#" class="nav-link">Kategori Produk</a></li>
-                                <li><a href="#" class="nav-link">Harga Emas</a></li>
+                                <li><a href="#" class="nav-link">Kepemilikan Barang</a></li>
+                                <li><a href="#" class="nav-link">Jual & Beli</a></li>
+                                <li><a href="#" class="nav-link">Biaya Operasional</a></li>
+                                <li><a href="#" class="nav-link">Biaya Non Operasional</a></li>
                             </ul>
                         </li>
-
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Stock Emas</a></li>
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>BuyBack Emas<span class="beta-badge">Beta</span></a></li>
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Pengiriman Internal</a></li>
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Serah Terima</a></li>
 
                         <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'event-log' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-chart-bar"></i>Keuangan</span>
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-truck"></i>Pengiriman Internal</span>
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
-                                <li><a href="#" class="nav-link">Laporan Keuangan</a></li>
-                                <li><a href="#" class="nav-link">Transaksi</a></li>
-                                <li><a href="#" class="nav-link">Pembayaran</a></li>
+                                <li><a href="#" class="nav-link">Shipments</a></li>
+                                <li><a href="#" class="nav-link">Masuk Jogja</a></li>
+                                <li><a href="#" class="nav-link">Keluar Jogja</a></li>
                             </ul>
                         </li>
-                        <li class="nav-item"><a href="settings" class="nav-link <?= $current_page === 'settings' ? 'active' : ''; ?>"><i class="fas fa-cog"></i>Settings</a></li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-handshake"></i>Serah Terima</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Jogja</a></li>
+                                <li><a href="#" class="nav-link">Jabodetabek</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-cash-register"></i>Keuangan</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Modal</a></li>
+                                <li><a href="#" class="nav-link">Bagi Hasil</a></li>
+                                <li><a href="#" class="nav-link">Fee Akad Wakala</a></li>
+                                <li><a href="#" class="nav-link">Pengeluaran Global</a></li>
+                                <li><a href="#" class="nav-link">Laporan Keuangan</a></li>
+                                <li><a href="#" class="nav-link">Rekonsiliasi</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="settings" class="nav-link has-submenu <?= $current_page === 'settings' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-gear"></i>Settings</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Harga</a></li>
+                                <li><a href="#" class="nav-link">Katalog</a></li>
+                                <li><a href="#" class="nav-link">Akun Finansial</a></li>
+                                <li><a href="#" class="nav-link">Lokasi</a></li>
+                            </ul>
+                        </li>
+
                     </ul>
                 </nav>
 
