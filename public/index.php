@@ -86,7 +86,7 @@
         }
         $csrf_token = $_SESSION["csrf_token"];
     // csp
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;");
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://code.jquery.com https://kit.fontawesome.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://ka-f.fontawesome.com;");
 // </security-headers>
 
 // <error-handling>
@@ -892,6 +892,7 @@
         }
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://kit.fontawesome.com/4bf4b74595.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -1433,7 +1434,6 @@
                 left: 0;
                 top: 0;
                 z-index: 1000;
-                border-right: 1px solid #e5e7eb;
             }
 
             .sidebar-header {
@@ -1444,17 +1444,12 @@
                 gap: 0.75rem;
             }
 
-            .sidebar-header .logo {
-                width: 32px;
-                height: 32px;
-                background: #3b82f6;
-                border-radius: 8px;
-                display: flex;
+            .sidebar-header img {
+                width: 200px;
+                height: auto;
+                display: block;
                 align-items: center;
                 justify-content: center;
-                color: white;
-                font-weight: bold;
-                font-size: 1.1rem;
             }
 
             .sidebar-header h3 {
@@ -1475,10 +1470,10 @@
                 justify-content: space-between;
                 width: 100%;
                 padding: 0.75rem 1rem;
-                background: #f3f4f6;
-                border: 1px solid #e5e7eb;
+                /* background: #f3f4f6; */
+                border: 0px;
                 border-radius: 8px;
-                color: #374151;
+                /* color: #374151; */
                 font-weight: 500;
                 cursor: pointer;
                 transition: all 0.2s ease;
@@ -1502,26 +1497,6 @@
                 margin-right: 0.75rem;
             }
 
-            .get-started {
-                padding: 0 1.5rem;
-                margin-bottom: 1rem;
-            }
-
-            .get-started-btn {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                width: 100%;
-                padding: 0.75rem 1rem;
-                background: #dbeafe;
-                border: none;
-                border-radius: 8px;
-                color: #1e40af;
-                font-weight: 500;
-                cursor: pointer;
-                text-decoration: none;
-            }
-
             .progress-bar {
                 width: 100%;
                 height: 4px;
@@ -1540,7 +1515,7 @@
 
             .sidebar-nav {
                 flex: 1;
-                padding: 0;
+                padding: 0 12px;
             }
 
             .sidebar-nav ul {
@@ -1556,32 +1531,33 @@
             .nav-link {
                 display: flex;
                 align-items: center;
-                padding: 0.75rem 1.5rem;
+                padding: var(--space-md);
                 color: #6b7280;
                 text-decoration: none;
                 transition: all 0.2s ease;
                 font-weight: 500;
                 font-size: 0.875rem;
+                border-radius: 8px;
+                /*width: 200px;*/
             }
 
             .nav-link:hover {
-                background: #f3f4f6;
-                color: #374151;
+                background: var(--gray-100);
+                color: var(--primary-dark);
             }
 
             .nav-link.active {
-                background: #dbeafe;
-                color: #1e40af;
-                border-right: 3px solid #3b82f6;
+                background: var(--primary-transparent);
+                color: var(--primary-dark);
             }
 
-            .nav-link .nav-icon {
-                margin-right: 0.75rem;
-                font-size: 1.1rem;
-                width: 20px;
-                display: flex;
-                justify-content: center;
-            }
+            .nav-link i {
+                 margin-right: 0.75rem;
+                 font-size: 1rem;
+                 width: 16px;
+                 display: flex;
+                 justify-content: center;
+             }
 
             .beta-badge {
                 background: #e0e7ff;
@@ -1598,20 +1574,11 @@
                 border-top: 1px solid #e5e7eb;
             }
 
-            .search-box {
-                display: flex;
-                align-items: center;
-                padding: 0.75rem 1rem;
-                background: #f9fafb;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                color: #6b7280;
-                margin-bottom: 1rem;
-                font-size: 0.875rem;
-            }
 
             .search-icon {
                 margin-right: 0.5rem;
+                font-size: 0.875rem;
+                color: #6b7280;
             }
 
             .user-profile {
@@ -1697,72 +1664,54 @@
 
              .dropdown-icon {
                  margin-right: 0.75rem;
-                 font-size: 1rem;
+                 font-size: 0.875rem;
+                 width: 14px;
+                 display: inline-flex;
+                 justify-content: center;
              }
              </style>
         <!--// Sidebar HTML-->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <div class="logo">M</div>
-                    <h3>Memberstack</h3>
+                    <a href="/">
+                            <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
+                        </a>
                 </div>
 
                 <div class="workspace-selector">
                     <button class="workspace-btn">
                         <div style="display: flex; align-items: center;">
                             <div class="workspace-icon">S</div>
-                            <span>Sekolah Startup</span>
+                            <span>Shafa Gold</span>
                         </div>
                         <span>⌄</span>
                     </button>
                 </div>
 
-                <div class="get-started">
-                    <a href="#" class="get-started-btn">
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span>📋</span>
-                                <span>Get Started</span>
-                                <span style="font-size: 0.75rem; color: #6b7280;">5 of 5</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill"></div>
-                            </div>
-                        </div>
-                        <span>›</span>
-                    </a>
-                </div>
-
                 <nav class="sidebar-nav">
                     <ul>
-                        <li><a href="#" class="nav-link active"><span class="nav-icon">🏠</span>Dashboard</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📁</span>Gated Content</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📈</span>Conversions<span class="beta-badge">Beta</span></a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">🧩</span>Components</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">💬</span>Community</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
+                        <li><a href="dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'members' ? 'active' : ''; ?>"><i class="fas fa-users"></i>Members</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'plans' ? 'active' : ''; ?>"><i class="fas fa-clipboard-list"></i>Plans</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Gated Content</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>Conversions<span class="beta-badge">Beta</span></a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Components</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Community</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'event-log' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i>Event Log</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'dev-tools' ? 'active' : ''; ?>"><i class="fas fa-tools"></i>Dev Tools</a></li>
+                        <li><a href="settings" class="nav-link <?= $current_page === 'settings' ? 'active' : ''; ?>"><i class="fas fa-cog"></i>Settings</a></li>
                     </ul>
                 </nav>
 
                 <div class="sidebar-footer">
-                    <div class="search-box">
-                        <span class="search-icon">🔍</span>
-                        <span>Find anything</span>
-                        <span style="margin-left: auto; font-size: 0.75rem;">⌘ K</span>
-                    </div>
-
                     <div class="user-profile" id="userProfile">
                         <div class="user-dropdown" id="userDropdown">
                             <a href="#" class="dropdown-item">
-                                <span class="dropdown-icon">👤</span>
+                                <i class="fas fa-user dropdown-icon"></i>
                                 Account
                             </a>
                             <a href="/logout" class="dropdown-item">
-                                <span class="dropdown-icon">↗️</span>
+                                <i class="fas fa-sign-out-alt dropdown-icon"></i>
                                 Logout
                             </a>
                         </div>
