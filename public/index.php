@@ -1691,14 +1691,13 @@
                 <nav class="sidebar-nav">
                     <ul>
                         <li><a href="dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'members' ? 'active' : ''; ?>"><i class="fas fa-users"></i>Members</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'plans' ? 'active' : ''; ?>"><i class="fas fa-clipboard-list"></i>Plans</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Gated Content</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>Conversions<span class="beta-badge">Beta</span></a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Components</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Community</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'event-log' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i>Event Log</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'dev-tools' ? 'active' : ''; ?>"><i class="fas fa-tools"></i>Dev Tools</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'members' ? 'active' : ''; ?>"><i class="fas fa-users"></i>Manajemen User</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'plans' ? 'active' : ''; ?>"><i class="fas fa-clipboard-list"></i>Produk</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Stock Emas</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>BuyBack Emas<span class="beta-badge">Beta</span></a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Pengiriman Internal</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Serah Terima</a></li>
+                        <li><a href="#" class="nav-link <?= $current_page === 'event-log' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i>Keuangan</a></li>
                         <li><a href="settings" class="nav-link <?= $current_page === 'settings' ? 'active' : ''; ?>"><i class="fas fa-cog"></i>Settings</a></li>
                     </ul>
                 </nav>
@@ -1725,7 +1724,7 @@
 
     <!--User Profile Dropdown Script-->
     <script>
-    $(document).ready(function() {
+    $(function() {
         // Toggle dropdown when user profile is clicked
         $('#userProfile').click(function(e) {
             e.stopPropagation();
@@ -1749,7 +1748,8 @@
             <style>
             .dashboard-content {
                 flex: 1;
-                margin-left: 250px;
+                margin-left: 280px;
+                margin-right: -12px;
                 padding: 1rem 0rem 1rem 1rem;
                 position: relative;
                 top: 0;
