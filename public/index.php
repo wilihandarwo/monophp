@@ -1515,7 +1515,7 @@
 
             .sidebar-nav {
                 flex: 1;
-                padding: 0 12px;
+                padding: 0 0 0 12px;
             }
 
             .sidebar-nav ul {
@@ -1555,8 +1555,61 @@
                  margin-right: 0.75rem;
                  font-size: 1rem;
                  width: 16px;
-                 display: flex;
+                 /*display: flex;*/
                  justify-content: center;
+             }
+
+             .nav-item {
+                 position: relative;
+             }
+
+             .nav-link.has-submenu {
+                 display: flex;
+                 justify-content: space-between;
+                 align-items: center;
+             }
+             a.nav-link.has-submenu {
+                 margin-right: -1rem;
+             }
+
+             .submenu-toggle {
+                 font-size: 0.75rem;
+                 transition: transform 0.2s ease;
+                 margin-left: auto;
+             }
+
+             .nav-item.open .submenu-toggle {
+                 transform: rotate(180deg);
+             }
+
+             .submenu {
+                 max-height: 0;
+                 overflow: hidden;
+                 transition: max-height 0.3s ease;
+             }
+
+             .nav-item.open .submenu {
+                 max-height: 300px;
+             }
+
+             .submenu li {
+                 list-style: none;
+             }
+
+             .submenu .nav-link {
+                 padding: 0.5rem 1rem 0.5rem 3rem;
+                 font-size: 0.875rem;
+                 color: #6b7280;
+             }
+
+             .submenu .nav-link:hover {
+                 background: var(--gray-100);
+                 color: var(--primary-dark);
+             }
+
+             .submenu .nav-link.active {
+                 background: rgba(59, 130, 246, 0.1);
+                 color: #3b82f6;
              }
 
             .beta-badge {
@@ -1690,15 +1743,49 @@
 
                 <nav class="sidebar-nav">
                     <ul>
-                        <li><a href="dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'members' ? 'active' : ''; ?>"><i class="fas fa-users"></i>Manajemen User</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'plans' ? 'active' : ''; ?>"><i class="fas fa-clipboard-list"></i>Produk</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Stock Emas</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>BuyBack Emas<span class="beta-badge">Beta</span></a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Pengiriman Internal</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Serah Terima</a></li>
-                        <li><a href="#" class="nav-link <?= $current_page === 'event-log' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i>Keuangan</a></li>
-                        <li><a href="settings" class="nav-link <?= $current_page === 'settings' ? 'active' : ''; ?>"><i class="fas fa-cog"></i>Settings</a></li>
+                        <li class="nav-item"><a href="dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'members' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-users"></i>Manajemen User</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Daftar User</a></li>
+                                <li><a href="#" class="nav-link">Tambah User</a></li>
+                                <li><a href="#" class="nav-link">Role & Permission</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-clipboard-list"></i>Produk</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Daftar Produk</a></li>
+                                <li><a href="#" class="nav-link">Kategori Produk</a></li>
+                                <li><a href="#" class="nav-link">Harga Emas</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-folder"></i>Stock Emas</a></li>
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'beta' ? 'active' : ''; ?>"><i class="fas fa-chart-line"></i>BuyBack Emas<span class="beta-badge">Beta</span></a></li>
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'components' ? 'active' : ''; ?>"><i class="fas fa-puzzle-piece"></i>Pengiriman Internal</a></li>
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'community' ? 'active' : ''; ?>"><i class="fas fa-comments"></i>Serah Terima</a></li>
+
+                        <li class="nav-item">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'event-log' ? 'active' : ''; ?>">
+                                <span><i class="fas fa-chart-bar"></i>Keuangan</span>
+                                <i class="fas fa-chevron-down submenu-toggle"></i>
+                            </a>
+                            <ul class="submenu">
+                                <li><a href="#" class="nav-link">Laporan Keuangan</a></li>
+                                <li><a href="#" class="nav-link">Transaksi</a></li>
+                                <li><a href="#" class="nav-link">Pembayaran</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item"><a href="settings" class="nav-link <?= $current_page === 'settings' ? 'active' : ''; ?>"><i class="fas fa-cog"></i>Settings</a></li>
                     </ul>
                 </nav>
 
@@ -1714,7 +1801,7 @@
                                 Logout
                             </a>
                         </div>
-                        <div class="user-avatar">FW</div>
+                        <div class="user-avatar"><img style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" src="<?= e($user['picture'] ?? 'Guest'); ?>" alt="User Avatar"></div>
                         <div class="user-info">
                             <div class="user-name"><?= e($user['name'] ?? 'Guest'); ?></div>
                         </div>
@@ -1739,6 +1826,31 @@
         // Prevent dropdown from closing when clicking inside it
         $('#userDropdown').click(function(e) {
             e.stopPropagation();
+        });
+
+        // Submenu toggle functionality
+        $('.nav-link.has-submenu').click(function(e) {
+            e.preventDefault();
+
+            var $navItem = $(this).parent('.nav-item');
+            var $submenu = $navItem.find('.submenu');
+
+            // Close other open submenus
+            $('.nav-item.open').not($navItem).removeClass('open');
+
+            // Toggle current submenu
+            $navItem.toggleClass('open');
+        });
+
+        // Handle submenu item clicks
+        $('.submenu .nav-link').click(function(e) {
+            e.stopPropagation();
+
+            // Remove active class from all submenu items
+            $('.submenu .nav-link').removeClass('active');
+
+            // Add active class to clicked item
+            $(this).addClass('active');
         });
     });
     </script>
