@@ -86,7 +86,7 @@
         }
         $csrf_token = $_SESSION["csrf_token"];
     // csp
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data:; https:; connect-src 'self' https:;");
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;");
 // </security-headers>
 
 // <error-handling>
@@ -724,6 +724,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e($page_titles[$current_page] ?? 'MonoPHP'); ?></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
     <style>
         :root {
         /* ========== BRAND COLORS (Primary = Deep Gold) ========== */
@@ -787,7 +790,7 @@
         --border-focus: var(--primary);        /* ADDED: Focus rings, active input borders */
 
         /* ========== TYPOGRAPHY ========== */
-        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, Roboto, sans-serif; /* UI text, buttons, navigation */
+        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
         --font-serif: "Crimson Pro", Georgia, serif; /* Editorial content, blog posts, testimonials */
         --font-mono: "JetBrains Mono", Consolas, monospace; /* Code blocks, technical content, data */
 
