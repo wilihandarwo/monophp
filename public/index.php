@@ -86,7 +86,7 @@
         }
         $csrf_token = $_SESSION["csrf_token"];
     // csp
-        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;");
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://code.jquery.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;");
 // </security-headers>
 
 // <error-handling>
@@ -891,6 +891,7 @@
             padding: var(--space-xl);
         }
     </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 </head>
 <body>
 
@@ -1422,8 +1423,8 @@
         <!--// Sidebar Style-->
             <style>
             .sidebar {
-                width: 250px;
-                background: #f8f9fa;
+                width: 280px;
+                background: #f8f9fb;
                 color: #333;
                 display: flex;
                 flex-direction: column;
@@ -1432,23 +1433,114 @@
                 left: 0;
                 top: 0;
                 z-index: 1000;
+                border-right: 1px solid #e5e7eb;
             }
 
             .sidebar-header {
-                padding: 2rem 1.5rem 1rem 1.5rem;
+                padding: 1.5rem 1.5rem 1rem 1.5rem;
                 border-bottom: none;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+
+            .sidebar-header .logo {
+                width: 32px;
+                height: 32px;
+                background: #3b82f6;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 1.1rem;
             }
 
             .sidebar-header h3 {
                 margin: 0;
-                color: #333;
+                color: #111827;
                 font-weight: 600;
-                font-size: 1.25rem;
+                font-size: 1.125rem;
+            }
+
+            .workspace-selector {
+                padding: 0 1.5rem 1rem 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .workspace-btn {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 0.75rem 1rem;
+                background: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                color: #374151;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .workspace-btn:hover {
+                background: #e5e7eb;
+            }
+
+            .workspace-icon {
+                width: 24px;
+                height: 24px;
+                background: #6b7280;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 0.75rem;
+                font-weight: bold;
+                margin-right: 0.75rem;
+            }
+
+            .get-started {
+                padding: 0 1.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .get-started-btn {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 0.75rem 1rem;
+                background: #dbeafe;
+                border: none;
+                border-radius: 8px;
+                color: #1e40af;
+                font-weight: 500;
+                cursor: pointer;
+                text-decoration: none;
+            }
+
+            .progress-bar {
+                width: 100%;
+                height: 4px;
+                background: #bfdbfe;
+                border-radius: 2px;
+                margin-top: 0.5rem;
+                overflow: hidden;
+            }
+
+            .progress-fill {
+                width: 100%;
+                height: 100%;
+                background: #3b82f6;
+                border-radius: 2px;
             }
 
             .sidebar-nav {
                 flex: 1;
-                padding: 1rem 0;
+                padding: 0;
             }
 
             .sidebar-nav ul {
@@ -1458,81 +1550,251 @@
             }
 
             .sidebar-nav li {
-                margin: 0.25rem 0;
+                margin: 0;
             }
 
             .nav-link {
                 display: flex;
                 align-items: center;
                 padding: 0.75rem 1.5rem;
-                color: #6c757d;
+                color: #6b7280;
                 text-decoration: none;
                 transition: all 0.2s ease;
-                border-radius: 0 25px 25px 0;
-                margin-right: 1rem;
                 font-weight: 500;
+                font-size: 0.875rem;
             }
 
             .nav-link:hover {
-                background: #e9ecef;
-                color: #495057;
+                background: #f3f4f6;
+                color: #374151;
             }
 
             .nav-link.active {
-                background: #007bff;
-                color: white;
+                background: #dbeafe;
+                color: #1e40af;
+                border-right: 3px solid #3b82f6;
             }
 
             .nav-link .nav-icon {
                 margin-right: 0.75rem;
                 font-size: 1.1rem;
+                width: 20px;
+                display: flex;
+                justify-content: center;
+            }
+
+            .beta-badge {
+                background: #e0e7ff;
+                color: #5b21b6;
+                font-size: 0.75rem;
+                padding: 0.125rem 0.5rem;
+                border-radius: 12px;
+                margin-left: auto;
+                font-weight: 500;
             }
 
             .sidebar-footer {
-                padding: 1.5rem;
-                border-top: 1px solid #e9ecef;
+                padding: 1rem 1.5rem;
+                border-top: 1px solid #e5e7eb;
             }
 
-            .sidebar-footer .btn {
-                width: 100%;
-                padding: 0.75rem;
-                background: #dc3545;
-                color: white;
-                border: none;
+            .search-box {
+                display: flex;
+                align-items: center;
+                padding: 0.75rem 1rem;
+                background: #f9fafb;
+                border: 1px solid #e5e7eb;
                 border-radius: 8px;
-                text-decoration: none;
-                display: inline-block;
-                text-align: center;
-                font-weight: 500;
-                transition: background 0.2s ease;
+                color: #6b7280;
+                margin-bottom: 1rem;
+                font-size: 0.875rem;
             }
 
-            .sidebar-footer .btn:hover {
-                background: #c82333;
+            .search-icon {
+                margin-right: 0.5rem;
             }
-            </style>
+
+            .user-profile {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                background: #f59e0b;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 0.875rem;
+            }
+
+            .user-info {
+                flex: 1;
+            }
+
+            .user-name {
+                 font-weight: 600;
+                 color: #111827;
+                 font-size: 0.875rem;
+                 margin: 0;
+             }
+
+             .user-profile {
+                 position: relative;
+                 cursor: pointer;
+             }
+
+             .user-dropdown {
+                 position: absolute;
+                 bottom: 100%;
+                 left: 0;
+                 right: 0;
+                 background: white;
+                 border: 1px solid #e5e7eb;
+                 border-radius: 8px;
+                 box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                 margin-bottom: 0.5rem;
+                 display: none;
+                 z-index: 1001;
+             }
+
+             .user-dropdown.show {
+                 display: block;
+             }
+
+             .dropdown-item {
+                 display: flex;
+                 align-items: center;
+                 padding: 0.75rem 1rem;
+                 color: #374151;
+                 text-decoration: none;
+                 font-size: 0.875rem;
+                 font-weight: 500;
+                 border-bottom: 1px solid #f3f4f6;
+                 transition: background 0.2s ease;
+             }
+
+             .dropdown-item:last-child {
+                 border-bottom: none;
+             }
+
+             .dropdown-item:hover {
+                 background: #f9fafb;
+             }
+
+             .dropdown-item:first-child {
+                 border-radius: 8px 8px 0 0;
+             }
+
+             .dropdown-item:last-child {
+                 border-radius: 0 0 8px 8px;
+             }
+
+             .dropdown-icon {
+                 margin-right: 0.75rem;
+                 font-size: 1rem;
+             }
+             </style>
         <!--// Sidebar HTML-->
             <div class="sidebar">
                 <div class="sidebar-header">
-                    <h3>Dashboard</h3>
+                    <div class="logo">M</div>
+                    <h3>Memberstack</h3>
                 </div>
+
+                <div class="workspace-selector">
+                    <button class="workspace-btn">
+                        <div style="display: flex; align-items: center;">
+                            <div class="workspace-icon">S</div>
+                            <span>Sekolah Startup</span>
+                        </div>
+                        <span>⌄</span>
+                    </button>
+                </div>
+
+                <div class="get-started">
+                    <a href="#" class="get-started-btn">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>📋</span>
+                                <span>Get Started</span>
+                                <span style="font-size: 0.75rem; color: #6b7280;">5 of 5</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+                        <span>›</span>
+                    </a>
+                </div>
+
                 <nav class="sidebar-nav">
                     <ul>
-                        <li><a href="#" class="nav-link active"><span class="nav-icon">📊</span>Dashboard</a></li>
+                        <li><a href="#" class="nav-link active"><span class="nav-icon">🏠</span>Dashboard</a></li>
                         <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Members</a></li>
                         <li><a href="#" class="nav-link"><span class="nav-icon">📋</span>Plans</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">📄</span>Gated Content</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">🔧</span>Components</a></li>
-                        <li><a href="#" class="nav-link"><span class="nav-icon">👥</span>Community</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📁</span>Gated Content</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">📈</span>Conversions<span class="beta-badge">Beta</span></a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">🧩</span>Components</a></li>
+                        <li><a href="#" class="nav-link"><span class="nav-icon">💬</span>Community</a></li>
                         <li><a href="#" class="nav-link"><span class="nav-icon">📊</span>Event Log</a></li>
                         <li><a href="#" class="nav-link"><span class="nav-icon">🛠️</span>Dev Tools</a></li>
                         <li><a href="#" class="nav-link"><span class="nav-icon">⚙️</span>Settings</a></li>
                     </ul>
                 </nav>
+
                 <div class="sidebar-footer">
-                    <a href="/logout" class="btn btn-danger">Logout</a>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <span>Find anything</span>
+                        <span style="margin-left: auto; font-size: 0.75rem;">⌘ K</span>
+                    </div>
+
+                    <div class="user-profile" id="userProfile">
+                        <div class="user-dropdown" id="userDropdown">
+                            <a href="#" class="dropdown-item">
+                                <span class="dropdown-icon">👤</span>
+                                Account
+                            </a>
+                            <a href="/logout" class="dropdown-item">
+                                <span class="dropdown-icon">↗️</span>
+                                Logout
+                            </a>
+                        </div>
+                        <div class="user-avatar">FW</div>
+                        <div class="user-info">
+                            <div class="user-name"><?= e($user['name'] ?? 'Guest'); ?></div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+    <!--User Profile Dropdown Script-->
+    <script>
+    $(document).ready(function() {
+        // Toggle dropdown when user profile is clicked
+        $('#userProfile').click(function(e) {
+            e.stopPropagation();
+            $('#userDropdown').toggleClass('show');
+        });
+
+        // Close dropdown when clicking outside
+        $(document).click(function() {
+            $('#userDropdown').removeClass('show');
+        });
+
+        // Prevent dropdown from closing when clicking inside it
+        $('#userDropdown').click(function(e) {
+            e.stopPropagation();
+        });
+    });
+    </script>
+
     <!--Dashboard Page-->
         <!--Style-->
             <style>
