@@ -680,54 +680,37 @@
 // </oauth-flow>
 
 // <routing>
-    // Define routes with page, category, and title
-        $routes = [
-            '' => [
-                'page' => 'home',
-                'category' => 'public',
-                'title' => 'MonoPHP'
-                ],
-            'home' => [
-                'page' => 'home',
-                'category' => 'public',
-                'title' => 'MonoPHP'
-                ],
-            'about' => [
-                'page' => 'about',
-                'category' => 'public',
-                'title' => 'About - MonoPHP'
-                ],
-            'contact' => [
-                'page' => 'contact',
-                'category' => 'public',
-                'title' => 'Contact - MonoPHP'
-                ],
+    // Define routes grouped by category
+        $route_categories = [
+            'public' => [
+                '' => ['page' => 'home', 'title' => 'MonoPHP'],
+                'home' => ['page' => 'home', 'title' => 'MonoPHP'],
+                'about' => ['page' => 'about', 'title' => 'About - MonoPHP'],
+                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP']
+            ],
             'dashboard' => [
-                'page' => 'dashboard',
-                'category' => 'dashboard',
-                'title' => 'Dashboard - MonoPHP'
-                ],
-            'settings' => [
-                'page' => 'settings',
-                'category' => 'dashboard',
-                'title' => 'Settings - MonoPHP'
-                ],
-            'auth/google/callback' => [
-                'page' => 'oauth_callback',
-                'category' => 'other',
-                'title' => 'MonoPHP'
-                ],
-            'logout' => [
-                'page' => 'logout',
-                'category' => 'other',
-                'title' => 'MonoPHP'
-                ]
+                'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
+                'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP']
+            ],
+            'other' => [
+                'auth/google/callback' => ['page' => 'oauth_callback', 'title' => 'MonoPHP'],
+                'logout' => ['page' => 'logout', 'title' => 'MonoPHP']
+            ]
         ];
-    // Get current route info
-        $current_route = $routes[$path] ?? $routes['home'];
-        $current_page = $current_route['page'];
-        $page_category = $current_route['category'];
-        $page_title = $current_route['title'];
+
+    // Find current route info
+        $current_page = 'home';
+        $page_category = 'public';
+        $page_title = 'MonoPHP';
+        
+        foreach ($route_categories as $category => $routes) {
+            if (isset($routes[$path])) {
+                $current_page = $routes[$path]['page'];
+                $page_category = $category;
+                $page_title = $routes[$path]['title'];
+                break;
+            }
+        }
     // Check if user is logged in
         $is_logged_in = is_logged_in();
     // Protect dashboard pages
