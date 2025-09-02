@@ -1857,53 +1857,52 @@
                     </div>
                 </div>
             </div>
+        <!--// Sidebar Script-->
+            <!--User Profile Dropdown Script-->
+            <script>
+            $(function() {
+                // Toggle dropdown when user profile is clicked
+                $('#userProfile').click(function(e) {
+                    e.stopPropagation();
+                    $('#userDropdown').toggleClass('show');
+                });
 
-    <!--User Profile Dropdown Script-->
-    <script>
-    $(function() {
-        // Toggle dropdown when user profile is clicked
-        $('#userProfile').click(function(e) {
-            e.stopPropagation();
-            $('#userDropdown').toggleClass('show');
-        });
+                // Close dropdown when clicking outside
+                $(document).click(function() {
+                    $('#userDropdown').removeClass('show');
+                });
 
-        // Close dropdown when clicking outside
-        $(document).click(function() {
-            $('#userDropdown').removeClass('show');
-        });
+                // Prevent dropdown from closing when clicking inside it
+                $('#userDropdown').click(function(e) {
+                    e.stopPropagation();
+                });
 
-        // Prevent dropdown from closing when clicking inside it
-        $('#userDropdown').click(function(e) {
-            e.stopPropagation();
-        });
+                // Submenu toggle functionality
+                $('.nav-link.has-submenu').click(function(e) {
+                    e.preventDefault();
 
-        // Submenu toggle functionality
-        $('.nav-link.has-submenu').click(function(e) {
-            e.preventDefault();
+                    var $navItem = $(this).parent('.nav-item');
+                    var $submenu = $navItem.find('.submenu');
 
-            var $navItem = $(this).parent('.nav-item');
-            var $submenu = $navItem.find('.submenu');
+                    // Close other open submenus
+                    $('.nav-item.open').not($navItem).removeClass('open');
 
-            // Close other open submenus
-            $('.nav-item.open').not($navItem).removeClass('open');
+                    // Toggle current submenu
+                    $navItem.toggleClass('open');
+                });
 
-            // Toggle current submenu
-            $navItem.toggleClass('open');
-        });
+                // Handle submenu item clicks
+                $('.submenu .nav-link').click(function(e) {
+                    e.stopPropagation();
 
-        // Handle submenu item clicks
-        $('.submenu .nav-link').click(function(e) {
-            e.stopPropagation();
+                    // Remove active class from all submenu items
+                    $('.submenu .nav-link').removeClass('active');
 
-            // Remove active class from all submenu items
-            $('.submenu .nav-link').removeClass('active');
-
-            // Add active class to clicked item
-            $(this).addClass('active');
-        });
-    });
-    </script>
-
+                    // Add active class to clicked item
+                    $(this).addClass('active');
+                });
+            });
+            </script>
     <!--Dashboard Page-->
         <!--Style-->
             <style>
