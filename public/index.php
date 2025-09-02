@@ -703,10 +703,12 @@
         $is_other_page = in_array($current_page, $other_pages);
     // Check if user is logged in
         $is_logged_in = is_logged_in();
-    // Protect dashboard page
-        if ($current_page === 'dashboard' && !$is_logged_in) {
+    // Protect all dashboard pages
+        if ($is_dashboard_page && !$is_logged_in) {
             redirect('/');
         }
+    // Set user data for dashboard pages
+        $user = $is_dashboard_page && $is_logged_in ? $_SESSION['user'] : null;
     // Page titles
         $page_titles = [
             'home' => 'MonoPHP',
@@ -2037,8 +2039,6 @@
             </style>
         <!--Dashboard Page-->
             <?php switch ($current_page) { case 'dashboard':
-                if (!$is_logged_in) {redirect('/');}
-                $user = $_SESSION['user'];
             ?>
             <div class="dashboard-content">
                 <div class="dashboard-content-wrapper">
@@ -2253,10 +2253,6 @@
             </div>
         <!--Settings Page-->
             <?php break; case 'settings':
-            if (!$is_logged_in) {
-                redirect('/');
-            }
-            $user = $_SESSION['user'];
             ?>
                 <!-- Main Content -->
                 <div class="dashboard-content">
