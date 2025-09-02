@@ -2251,10 +2251,23 @@
                     </div>
                 </div>
             </div>
-        <!--Settings Page-->
-            <?php break; case 'settings':
-            ?>
-                <!-- Main Content -->
+        <!--Manajemen User - Parent Page-->
+            <!--<Manajemen User - Admin dan Karyawan Page>-->
+                <?php break; case 'teams':?>
+                <div class="dashboard-content">
+                    <div class="dashboard-header">
+                        <h2>Admin dan Karyawan</h2>
+                        <p>Here's what's happening with your account today.</p>
+                    </div>
+                    <div class="content-body">
+                        <!-- Content will go here -->
+                        <div class="placeholder-content">
+                            <p>Main content area - ready for your content!</p>
+                        </div>
+                    </div>
+                </div> <!--</Manajemen User - Admin dan Karyawan Page>-->
+            <!--<Manajemen User - Customers Page>-->
+                <?php break; case 'customers':?>
                 <div class="dashboard-content">
                     <div class="dashboard-header">
                         <h2>Settings, <?= e($user['name']); ?>!</h2>
@@ -2266,7 +2279,35 @@
                             <p>Main content area - ready for your content!</p>
                         </div>
                     </div>
+                </div><!--</Manajemen User - Customer Page>-->
+        <!--Settings Page-->
+            <?php break; case 'settings':?>
+            <div class="dashboard-content">
+                <div class="dashboard-header">
+                    <h2>Settings, <?= e($user['name']); ?>!</h2>
+                    <p>Here's what's happening with your account today.</p>
                 </div>
+                <div class="content-body">
+                    <!-- Content will go here -->
+                    <div class="placeholder-content">
+                        <p>Main content area - ready for your content!</p>
+                    </div>
+                </div>
+            </div>
+        <!--Settings Page-->
+            <?php break; case 'settings':?>
+            <div class="dashboard-content">
+                <div class="dashboard-header">
+                    <h2>Settings, <?= e($user['name']); ?>!</h2>
+                    <p>Here's what's happening with your account today.</p>
+                </div>
+                <div class="content-body">
+                    <!-- Content will go here -->
+                    <div class="placeholder-content">
+                        <p>Main content area - ready for your content!</p>
+                    </div>
+                </div>
+            </div>
         <!--404 Page-->
             <?php break; default:?>
             <div>
