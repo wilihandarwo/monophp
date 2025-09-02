@@ -680,43 +680,62 @@
 // </oauth-flow>
 
 // <routing>
-    // Define available pages
-        $pages = [
-            '' => 'home',
-            'home' => 'home',
-            'about' => 'about',
-            'contact' => 'contact',
-            'dashboard' => 'dashboard',
-            'settings' => 'settings',
-            'auth/google/callback' => 'oauth_callback',
-            'logout' => 'logout'
+    // Define routes with page, category, and title
+        $routes = [
+            '' => [
+                'page' => 'home',
+                'category' => 'public',
+                'title' => 'MonoPHP'
+                ],
+            'home' => [
+                'page' => 'home',
+                'category' => 'public',
+                'title' => 'MonoPHP'
+                ],
+            'about' => [
+                'page' => 'about',
+                'category' => 'public',
+                'title' => 'About - MonoPHP'
+                ],
+            'contact' => [
+                'page' => 'contact',
+                'category' => 'public',
+                'title' => 'Contact - MonoPHP'
+                ],
+            'dashboard' => [
+                'page' => 'dashboard',
+                'category' => 'dashboard',
+                'title' => 'Dashboard - MonoPHP'
+                ],
+            'settings' => [
+                'page' => 'settings',
+                'category' => 'dashboard',
+                'title' => 'Settings - MonoPHP'
+                ],
+            'auth/google/callback' => [
+                'page' => 'oauth_callback',
+                'category' => 'other',
+                'title' => 'MonoPHP'
+                ],
+            'logout' => [
+                'page' => 'logout',
+                'category' => 'other',
+                'title' => 'MonoPHP'
+                ]
         ];
-    // Define pages category
-        $public_pages = ['home', 'about', 'contact'];
-        $dashboard_pages = ['dashboard', 'settings'];
-        $other_pages = ['auth/google/callback', 'logout'];
-    // Determine current page
-        $current_page = $pages[$path] ?? 'home';
-    // Check category of the current page
-        $is_public_page = in_array($current_page, $public_pages);
-        $is_dashboard_page = in_array($current_page, $dashboard_pages);
-        $is_other_page = in_array($current_page, $other_pages);
+    // Get current route info
+        $current_route = $routes[$path] ?? $routes['home'];
+        $current_page = $current_route['page'];
+        $page_category = $current_route['category'];
+        $page_title = $current_route['title'];
     // Check if user is logged in
         $is_logged_in = is_logged_in();
-    // Protect all dashboard pages
-        if ($is_dashboard_page && !$is_logged_in) {
+    // Protect dashboard pages
+        if ($page_category === 'dashboard' && !$is_logged_in) {
             redirect('/');
         }
     // Set user data for dashboard pages
-        $user = $is_dashboard_page && $is_logged_in ? $_SESSION['user'] : null;
-    // Page titles
-        $page_titles = [
-            'home' => 'MonoPHP',
-            'about' => 'About - MonoPHP',
-            'contact' => 'Contact - MonoPHP',
-            'dashboard' => 'Dashboard - MonoPHP',
-            'settings' => 'Settings - MonoPHP'
-        ];
+        $user = ($page_category === 'dashboard' && $is_logged_in) ? $_SESSION['user'] : null;
 // </routing>
 ?>
 
@@ -725,7 +744,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo e($page_titles[$current_page] ?? 'MonoPHP'); ?></title>
+    <title><?php echo e($page_title); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
@@ -899,7 +918,7 @@
 <body>
 
 <!--VIEW: public pages-->
-<?php if ($is_public_page) { ?>
+<?php if ($page_category === 'public') { ?>
 <!-- <public-container>  -->
     <div class="public-container" style="max-width: var(--container-2xl); margin: var(--space-4xl) auto; padding: var(--space-xl);">
     <!--Navbar-->
@@ -1419,7 +1438,7 @@
 <!-- </public-container>  -->
 
 <!--VIEW: dashboard pages-->
-<?php } elseif($is_dashboard_page) { ?>
+<?php } elseif($page_category === 'dashboard') { ?>
 <!-- <dashboard-container>  -->
     <div class="dashboard-container">
     <!--Sidebar-->
