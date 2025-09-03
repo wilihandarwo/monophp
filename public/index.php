@@ -692,6 +692,7 @@
             ],
             'dashboard' => [
                 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
+                'business' => ['page' => 'business', 'title' => 'Dashboard - MonoPHP'],
                 'user-management/teams' => ['page' => 'teams', 'title' => 'Admin dan Karyawan - MonoPHP'],
                 'user-management/customers' => ['page' => 'customers', 'title' => 'Dashboard - MonoPHP'],
                 'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP']
@@ -1753,6 +1754,8 @@
                     <ul>
                         <li class="nav-item"><a href="/dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
 
+                         <li class="nav-item"><a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>"><i class="fas fa-building"></i>Business</a></li>
+
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'teams' && 'customers' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-users"></i>Manajemen User</span>
@@ -2284,6 +2287,20 @@
                     </div>
                 </div>
             </div>
+        <!--<Toko Page>-->
+            <?php break; case 'business':?>
+            <div class="dashboard-content">
+                <div class="dashboard-header">
+                    <h2>Business</h2>
+                    <p>Here's what's happening with your account today.</p>
+                </div>
+                <div class="content-body">
+                    <!-- Content will go here -->
+                    <div class="placeholder-content">
+                        <p>Main content area - ready for your content!</p>
+                    </div>
+                </div>
+            </div> <!--</Manajemen User - Admin dan Karyawan Page>-->
         <!--Manajemen User - Parent Page-->
             <!--<Manajemen User - Admin dan Karyawan Page>-->
                 <?php break; case 'teams':?>
@@ -2313,20 +2330,6 @@
                         </div>
                     </div>
                 </div><!--</Manajemen User - Customer Page>-->
-        <!--Settings Page-->
-            <?php break; case 'settings':?>
-            <div class="dashboard-content">
-                <div class="dashboard-header">
-                    <h2>Settings, <?= e($user['name']); ?>!</h2>
-                    <p>Here's what's happening with your account today.</p>
-                </div>
-                <div class="content-body">
-                    <!-- Content will go here -->
-                    <div class="placeholder-content">
-                        <p>Main content area - ready for your content!</p>
-                    </div>
-                </div>
-            </div>
         <!--Settings Page-->
             <?php break; case 'settings':?>
             <div class="dashboard-content">
