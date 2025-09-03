@@ -681,6 +681,8 @@
 
 // <routing>
     // Define routes grouped by category
+    // [name of url / slug] => ['page' => [title of switch case logic in html], 'title' => 'Dashboard - MonoPHP'],
+    // 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
         $route_categories = [
             'public' => [
                 '' => ['page' => 'home', 'title' => 'MonoPHP'],
@@ -690,6 +692,8 @@
             ],
             'dashboard' => [
                 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
+                'user-management/teams' => ['page' => 'teams', 'title' => 'Admin dan Karyawan - MonoPHP'],
+                'user-management/customers' => ['page' => 'customers', 'title' => 'Dashboard - MonoPHP'],
                 'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP']
             ],
             'other' => [
@@ -702,7 +706,7 @@
         $current_page = 'home';
         $page_category = 'public';
         $page_title = 'MonoPHP';
-        
+
         foreach ($route_categories as $category => $routes) {
             if (isset($routes[$path])) {
                 $current_page = $routes[$path]['page'];
@@ -730,7 +734,7 @@
     <title><?php echo e($page_title); ?></title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
     <style>
         :root {
         /* ========== BRAND COLORS (Primary = Deep Gold) ========== */
@@ -1747,20 +1751,20 @@
 
                 <nav class="sidebar-nav">
                     <ul>
-                        <li class="nav-item"><a href="dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
+                        <li class="nav-item"><a href="/dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
 
                         <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'members' ? 'active' : ''; ?>">
+                            <a href="#" class="nav-link has-submenu <?= $current_page === 'teams' && 'customers' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-users"></i>Manajemen User</span>
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
-                                <li><a href="#" class="nav-link">Admin dan Karyawan</a></li>
-                                <li><a href="#" class="nav-link">Customer</a></li>
+                                <li><a href="/user-management/teams" class="nav-link <?= $current_page === 'teams' ? 'active' : ''; ?>">Admin dan Karyawan</a></li>
+                                <li><a href="/user-management/customers" class="nav-link <?= $current_page === 'customers' ? 'active' : ''; ?>">Customer</a></li>
                             </ul>
                         </li>
 
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'gated-content' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
+                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'produk' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
 
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
@@ -1865,6 +1869,19 @@
             <!--User Profile Dropdown Script-->
             <script>
             $(function() {
+                // Restore sidebar state on page load
+                var openSubmenu = localStorage.getItem('openSubmenu');
+                if (openSubmenu) {
+                    $('.nav-item').each(function() {
+                        var $navItem = $(this);
+                        var $link = $navItem.find('.nav-link.has-submenu');
+                        var linkText = $link.find('span').text().trim();
+                        if (linkText === openSubmenu) {
+                            $navItem.addClass('open');
+                        }
+                    });
+                }
+
                 // Toggle dropdown when user profile is clicked
                 $('#userProfile').click(function(e) {
                     e.stopPropagation();
@@ -1887,17 +1904,31 @@
 
                     var $navItem = $(this).parent('.nav-item');
                     var $submenu = $navItem.find('.submenu');
+                    var linkText = $(this).find('span').text().trim();
 
                     // Close other open submenus
                     $('.nav-item.open').not($navItem).removeClass('open');
 
                     // Toggle current submenu
                     $navItem.toggleClass('open');
+
+                    // Save state to localStorage
+                    if ($navItem.hasClass('open')) {
+                        localStorage.setItem('openSubmenu', linkText);
+                    } else {
+                        localStorage.removeItem('openSubmenu');
+                    }
                 });
 
                 // Handle submenu item clicks
                 $('.submenu .nav-link').click(function(e) {
                     e.stopPropagation();
+
+                    // Save the parent submenu state before navigation
+                    var $parentNavItem = $(this).closest('.nav-item');
+                    var $parentLink = $parentNavItem.find('.nav-link.has-submenu');
+                    var parentLinkText = $parentLink.find('span').text().trim();
+                    localStorage.setItem('openSubmenu', parentLinkText);
 
                     // Remove active class from all submenu items
                     $('.submenu .nav-link').removeClass('active');
@@ -2272,7 +2303,7 @@
                 <?php break; case 'customers':?>
                 <div class="dashboard-content">
                     <div class="dashboard-header">
-                        <h2>Settings, <?= e($user['name']); ?>!</h2>
+                        <h2>Customers</h2>
                         <p>Here's what's happening with your account today.</p>
                     </div>
                     <div class="content-body">
