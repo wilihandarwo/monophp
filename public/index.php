@@ -246,6 +246,21 @@
             $migrations = [
                 // Migrations can be added here in the future. Example:
                 // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+                '2025_01_14_100000_create_businesses_table' => "CREATE TABLE IF NOT EXISTS businesses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    address TEXT,
+                    phone VARCHAR(50),
+                    email VARCHAR(255),
+                    website VARCHAR(255),
+                    logo_url TEXT,
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );"
             ];
 
             $pdo = get_db_connection();
@@ -349,6 +364,168 @@
             return $_SESSION["user"] ?? null;
         }
 // </authentication>
+
+// <business-management>
+    // Create a new business for the current user
+        function create_business(array $data): ?int {
+            $pdo = get_db_connection();
+            $user = get_user();
+            
+            if (!$user) {
+                return null;
+            }
+            
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO businesses (user_id, name, description, address, phone, email, website, logo_url) 
+                    VALUES (:user_id, :name, :description, :address, :phone, :email, :website, :logo_url)
+                ");
+                
+                $stmt->execute([
+                    ':user_id' => $user['id'],
+                    ':name' => $data['name'],
+                    ':description' => $data['description'] ?? null,
+                    ':address' => $data['address'] ?? null,
+                    ':phone' => $data['phone'] ?? null,
+                    ':email' => $data['email'] ?? null,
+                    ':website' => $data['website'] ?? null,
+                    ':logo_url' => $data['logo_url'] ?? null
+                ]);
+                
+                return (int) $pdo->lastInsertId();
+            } catch (PDOException $e) {
+                error_log("Failed to create business: " . $e->getMessage());
+                return null;
+            }
+        }
+    // Get all businesses for the current user
+        function get_user_businesses(): array {
+            $pdo = get_db_connection();
+            $user = get_user();
+            
+            if (!$user) {
+                return [];
+            }
+            
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT * FROM businesses 
+                    WHERE user_id = :user_id AND status = 'active' 
+                    ORDER BY created_at DESC
+                ");
+                
+                $stmt->execute([':user_id' => $user['id']]);
+                return $stmt->fetchAll();
+            } catch (PDOException $e) {
+                error_log("Failed to get businesses: " . $e->getMessage());
+                return [];
+            }
+        }
+    // Get a specific business by ID (only if owned by current user)
+        function get_business_by_id(int $business_id): ?array {
+            $pdo = get_db_connection();
+            $user = get_user();
+            
+            if (!$user) {
+                return null;
+            }
+            
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT * FROM businesses 
+                    WHERE id = :id AND user_id = :user_id AND status = 'active'
+                ");
+                
+                $stmt->execute([
+                    ':id' => $business_id,
+                    ':user_id' => $user['id']
+                ]);
+                
+                return $stmt->fetch() ?: null;
+            } catch (PDOException $e) {
+                error_log("Failed to get business: " . $e->getMessage());
+                return null;
+            }
+        }
+    // Update a business
+        function update_business(int $business_id, array $data): bool {
+            $pdo = get_db_connection();
+            $user = get_user();
+            
+            if (!$user) {
+                return false;
+            }
+            
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE businesses 
+                    SET name = :name, description = :description, address = :address, 
+                        phone = :phone, email = :email, website = :website, 
+                        logo_url = :logo_url, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id AND user_id = :user_id
+                ");
+                
+                return $stmt->execute([
+                    ':id' => $business_id,
+                    ':user_id' => $user['id'],
+                    ':name' => $data['name'],
+                    ':description' => $data['description'] ?? null,
+                    ':address' => $data['address'] ?? null,
+                    ':phone' => $data['phone'] ?? null,
+                    ':email' => $data['email'] ?? null,
+                    ':website' => $data['website'] ?? null,
+                    ':logo_url' => $data['logo_url'] ?? null
+                ]);
+            } catch (PDOException $e) {
+                error_log("Failed to update business: " . $e->getMessage());
+                return false;
+            }
+        }
+    // Delete a business (soft delete by setting status to 'deleted')
+        function delete_business(int $business_id): bool {
+            $pdo = get_db_connection();
+            $user = get_user();
+            
+            if (!$user) {
+                return false;
+            }
+            
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE businesses 
+                    SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id AND user_id = :user_id
+                ");
+                
+                return $stmt->execute([
+                    ':id' => $business_id,
+                    ':user_id' => $user['id']
+                ]);
+            } catch (PDOException $e) {
+                error_log("Failed to delete business: " . $e->getMessage());
+                return false;
+            }
+        }
+    // Set current business in session
+        function set_current_business(int $business_id): bool {
+            $business = get_business_by_id($business_id);
+            
+            if ($business) {
+                $_SESSION['current_business'] = $business;
+                return true;
+            }
+            
+            return false;
+        }
+    // Get current business from session
+        function get_current_business(): ?array {
+            return $_SESSION['current_business'] ?? null;
+        }
+    // Clear current business from session
+        function clear_current_business(): void {
+            unset($_SESSION['current_business']);
+        }
+// </business-management>
 
 // <google-oauth>
     // Google OAuth - Configuration
@@ -544,6 +721,145 @@
         $user = get_user();
         $pdo = get_db_connection();
 // </view-initialization>
+
+// <post-request-handling>
+    // Handle POST requests for business operations
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Verify CSRF token on ALL POST requests
+            if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
+                die('CSRF token validation failed. Request aborted.');
+            }
+            
+            // Ensure user is logged in for business operations
+            if (!is_logged_in()) {
+                $errors[] = 'You must be logged in to perform this action.';
+            } else {
+                $action = $_POST['action'] ?? '';
+                
+                switch ($action) {
+                    case 'create_business':
+                        $business_data = [
+                            'name' => trim($_POST['name'] ?? ''),
+                            'description' => trim($_POST['description'] ?? ''),
+                            'address' => trim($_POST['address'] ?? ''),
+                            'phone' => trim($_POST['phone'] ?? ''),
+                            'email' => trim($_POST['email'] ?? ''),
+                            'website' => trim($_POST['website'] ?? ''),
+                            'logo_url' => trim($_POST['logo_url'] ?? '')
+                        ];
+                        
+                        // Validate required fields
+                        if (empty($business_data['name'])) {
+                            $errors[] = 'Business name is required.';
+                        } elseif (strlen($business_data['name']) > 255) {
+                            $errors[] = 'Business name must be less than 255 characters.';
+                        } else {
+                            $business_id = create_business($business_data);
+                            if ($business_id) {
+                                $messages[] = 'Business created successfully!';
+                                // Set as current business if it's the first one
+                                $user_businesses = get_user_businesses();
+                                if (count($user_businesses) === 1) {
+                                    set_current_business($business_id);
+                                }
+                            } else {
+                                $errors[] = 'Failed to create business. Please try again.';
+                            }
+                        }
+                        break;
+                        
+                    case 'update_business':
+                        $business_id = (int) ($_POST['business_id'] ?? 0);
+                        $business_data = [
+                            'name' => trim($_POST['name'] ?? ''),
+                            'description' => trim($_POST['description'] ?? ''),
+                            'address' => trim($_POST['address'] ?? ''),
+                            'phone' => trim($_POST['phone'] ?? ''),
+                            'email' => trim($_POST['email'] ?? ''),
+                            'website' => trim($_POST['website'] ?? ''),
+                            'logo_url' => trim($_POST['logo_url'] ?? '')
+                        ];
+                        
+                        // Validate required fields
+                        if ($business_id <= 0) {
+                            $errors[] = 'Invalid business ID.';
+                        } elseif (empty($business_data['name'])) {
+                            $errors[] = 'Business name is required.';
+                        } elseif (strlen($business_data['name']) > 255) {
+                            $errors[] = 'Business name must be less than 255 characters.';
+                        } else {
+                            // Check if business exists and belongs to user
+                            $existing_business = get_business_by_id($business_id);
+                            if (!$existing_business) {
+                                $errors[] = 'Business not found or access denied.';
+                            } else {
+                                $success = update_business($business_id, $business_data);
+                                if ($success) {
+                                    $messages[] = 'Business updated successfully!';
+                                    // Update current business in session if it's the active one
+                                    $current_business = get_current_business();
+                                    if ($current_business && $current_business['id'] == $business_id) {
+                                        set_current_business($business_id);
+                                    }
+                                } else {
+                                    $errors[] = 'Failed to update business. Please try again.';
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'delete_business':
+                        $business_id = (int) ($_POST['business_id'] ?? 0);
+                        
+                        if ($business_id <= 0) {
+                            $errors[] = 'Invalid business ID.';
+                        } else {
+                            // Check if business exists and belongs to user
+                            $existing_business = get_business_by_id($business_id);
+                            if (!$existing_business) {
+                                $errors[] = 'Business not found or access denied.';
+                            } else {
+                                $success = delete_business($business_id);
+                                if ($success) {
+                                    $messages[] = 'Business deleted successfully!';
+                                    // Clear current business if it was the deleted one
+                                    $current_business = get_current_business();
+                                    if ($current_business && $current_business['id'] == $business_id) {
+                                        clear_current_business();
+                                    }
+                                } else {
+                                    $errors[] = 'Failed to delete business. Please try again.';
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'set_current_business':
+                        $business_id = (int) ($_POST['business_id'] ?? 0);
+                        
+                        if ($business_id <= 0) {
+                            $errors[] = 'Invalid business ID.';
+                        } else {
+                            $success = set_current_business($business_id);
+                            if ($success) {
+                                $messages[] = 'Business switched successfully!';
+                            } else {
+                                $errors[] = 'Failed to switch business. Business not found or access denied.';
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        $errors[] = 'Invalid action specified.';
+                        break;
+                }
+            }
+            
+            // Redirect to prevent form resubmission
+            $redirect_url = $_POST['redirect_url'] ?? '/business';
+            redirect($redirect_url);
+        }
+// </post-request-handling>
 
 // <oauth-flow>
     // File path
@@ -1491,6 +1807,53 @@
             .workspace-btn:hover {
                 background: #e5e7eb;
             }
+            
+            .business-selector {
+                position: relative;
+            }
+            
+            .business-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                margin-top: 0.5rem;
+                z-index: 1001;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            
+            .business-dropdown .dropdown-item {
+                display: flex;
+                align-items: center;
+                padding: 0.75rem 1rem;
+                color: #374151;
+                text-decoration: none;
+                font-size: 0.875rem;
+                transition: background 0.2s ease;
+                border: none;
+                width: 100%;
+                text-align: left;
+            }
+            
+            .business-dropdown .dropdown-item:hover {
+                background: #f9fafb;
+            }
+            
+            .business-dropdown .dropdown-divider {
+                height: 1px;
+                background: #e5e7eb;
+                margin: 0.5rem 0;
+            }
+            
+            .business-item:focus {
+                outline: none;
+                background: #f3f4f6;
+            }
 
             .workspace-icon {
                 width: 24px;
@@ -1732,6 +2095,22 @@
                  justify-content: center;
              }
              </style>
+             
+             <script>
+             function toggleBusinessDropdown() {
+                 $('#businessDropdown').toggle();
+             }
+             
+             // Close dropdown when clicking outside
+             $(document).on('click', function(event) {
+                 const $selector = $('.business-selector');
+                 const $dropdown = $('#businessDropdown');
+                 
+                 if ($selector.length && $dropdown.length && !$selector.is(event.target) && $selector.has(event.target).length === 0) {
+                     $dropdown.hide();
+                 }
+             });
+             </script>
         <!--// Sidebar HTML-->
             <div class="sidebar">
                 <div class="sidebar-header">
@@ -1741,13 +2120,78 @@
                 </div>
 
                 <div class="workspace-selector">
-                    <button class="workspace-btn">
-                        <div style="display: flex; align-items: center;">
-                            <div class="workspace-icon">S</div>
-                            <span>Shafa Gold</span>
+                    <?php 
+                    $current_business = get_current_business();
+                    $user = get_user();
+                    $user_businesses = $user ? get_user_businesses($user['id']) : [];
+                    ?>
+                    <div class="business-selector">
+                        <button class="workspace-btn" onclick="toggleBusinessDropdown()">
+                            <div style="display: flex; align-items: center;">
+                                <div class="workspace-icon">
+                                    <?= $current_business ? strtoupper(substr($current_business['name'], 0, 1)) : 'B' ?>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.875rem;">
+                                        <?= $current_business ? e($current_business['name']) : 'Select Business' ?>
+                                    </div>
+                                    <?php if ($current_business): ?>
+                                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
+                                        <?= $current_business['status'] === 'active' ? 'Active' : 'Inactive' ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <span>⌄</span>
+                        </button>
+                        
+                        <div class="business-dropdown" id="businessDropdown" style="display: none;">
+                            <?php if (empty($user_businesses)): ?>
+                                <div class="dropdown-item" style="padding: 1rem; text-align: center; color: #6b7280;">
+                                    No businesses found
+                                </div>
+                                <div class="dropdown-divider"></div>
+                            <?php else: ?>
+                                <?php foreach ($user_businesses as $business): ?>
+                                <form method="POST" style="margin: 0;">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="set_current_business">
+                                    <input type="hidden" name="business_id" value="<?= $business['id'] ?>">
+                                    <button type="submit" class="dropdown-item business-item" 
+                                            style="width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+                                                   <?= $current_business && $current_business['id'] == $business['id'] ? 'background-color: #f3f4f6;' : '' ?>">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div class="workspace-icon" style="width: 20px; height: 20px; font-size: 0.625rem;">
+                                                <?= strtoupper(substr($business['name'], 0, 1)) ?>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 500; font-size: 0.875rem;">
+                                                    <?= e($business['name']) ?>
+                                                    <?php if ($current_business && $current_business['id'] == $business['id']): ?>
+                                                        <span style="color: #059669; font-size: 0.75rem; margin-left: 0.5rem;">✓</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div style="font-size: 0.75rem; color: #6b7280;">
+                                                    <?= $business['status'] === 'active' ? 'Active' : 'Inactive' ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </form>
+                                <?php endforeach; ?>
+                                <div class="dropdown-divider"></div>
+                            <?php endif; ?>
+                            
+                            <a href="/business" class="dropdown-item" style="color: #3b82f6; font-weight: 500;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-plus" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                    <span>Manage Businesses</span>
+                                </div>
+                            </a>
                         </div>
-                        <span>⌄</span>
-                    </button>
+                    </div>
                 </div>
 
                 <nav class="sidebar-nav">
@@ -2289,18 +2733,296 @@
             </div>
         <!--<Toko Page>-->
             <?php break; case 'business':?>
+            <?php
+                // Get user's businesses and current business
+                $user_businesses = get_user_businesses();
+                $current_business = get_current_business();
+                $edit_business = null;
+                
+                // Check if we're editing a business
+                if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
+                    $edit_business = get_business_by_id((int)$_GET['edit']);
+                }
+            ?>
             <div class="dashboard-content">
                 <div class="dashboard-header">
-                    <h2>Business</h2>
-                    <p>Here's what's happening with your account today.</p>
+                    <h2>Business Management</h2>
+                    <p>Manage your businesses and switch between them for multitenant operations.</p>
                 </div>
+                
+               
+                
                 <div class="content-body">
-                    <!-- Content will go here -->
-                    <div class="placeholder-content">
-                        <p>Main content area - ready for your content!</p>
+                     <!-- Current Business Display -->
+                <?php if ($current_business): ?>
+                <div class="current-business-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 1.1rem;">Current Business</h4>
+                            <h3 style="margin: 0.25rem 0 0 0; font-size: 1.5rem;"><?= e($current_business['name']) ?></h3>
+                        </div>
+                        <div style="text-align: right; opacity: 0.9;">
+                            <small>ID: <?= $current_business['id'] ?></small><br>
+                            <small>Created: <?= date('M j, Y', strtotime($current_business['created_at'])) ?></small>
+                        </div>
                     </div>
                 </div>
-            </div> <!--</Manajemen User - Admin dan Karyawan Page>-->
+                <?php endif; ?>
+                    <!-- Create Business Button (only show if no business exists) -->
+                    <?php if (!$edit_business && empty($user_businesses)): ?>
+                    <div style="margin-bottom: 2rem; text-align: right;">
+                        <button id="createBusinessBtn" 
+                                style="background: #007bff; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-plus"></i> Create Your Business
+                        </button>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Edit Business Form (only shown when editing) -->
+                    <?php if ($edit_business): ?>
+                    <div class="business-form-section" style="background: #f8f9fa; padding: 2rem; border-radius: 12px; margin-bottom: 2rem;">
+                        <h3 style="margin-top: 0; color: #333;">Edit Business</h3>
+                        
+                        <form method="POST" style="display: grid; gap: 1rem;">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="update_business">
+                            <input type="hidden" name="business_id" value="<?= $edit_business['id'] ?>">
+                            <input type="hidden" name="redirect_url" value="/business">
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Business Name *</label>
+                                    <input type="text" id="name" name="name" required 
+                                           value="<?= e($edit_business['name']) ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                </div>
+                                
+                                <div>
+                                    <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Business Email</label>
+                                    <input type="email" id="email" name="email" 
+                                           value="<?= e($edit_business['email']) ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="description" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Description</label>
+                                <textarea id="description" name="description" rows="3" 
+                                          style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; resize: vertical;"><?= e($edit_business['description']) ?></textarea>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label for="phone" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Phone</label>
+                                    <input type="tel" id="phone" name="phone" 
+                                           value="<?= e($edit_business['phone']) ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                </div>
+                                
+                                <div>
+                                    <label for="website" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Website</label>
+                                    <input type="url" id="website" name="website" 
+                                           value="<?= e($edit_business['website']) ?>"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="address" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Address</label>
+                                <textarea id="address" name="address" rows="2" 
+                                          style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; resize: vertical;"><?= e($edit_business['address']) ?></textarea>
+                            </div>
+                            
+                            <div>
+                                <label for="logo_url" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Logo URL</label>
+                                <input type="url" id="logo_url" name="logo_url" 
+                                       value="<?= e($edit_business['logo_url']) ?>"
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+                            
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <button type="submit" 
+                                        style="background: #007bff; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600;">
+                                    Update Business
+                                </button>
+                                
+                                <a href="/business" 
+                                   style="background: #6c757d; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; text-decoration: none; font-weight: 600; display: inline-block;">
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Business Information -->
+                    <div class="business-info-section">
+                        <h3 style="color: #333; margin-bottom: 1.5rem;">Your Business</h3>
+                        
+                        <?php if (empty($user_businesses)): ?>
+                            <div style="text-align: center; padding: 3rem; background: #f8f9fa; border-radius: 12px; color: #6c757d;">
+                                <h4 style="margin-bottom: 1rem;">No business yet</h4>
+                                <p>Create your business to get started with your operations.</p>
+                            </div>
+                        <?php else: ?>
+                            <div style="display: grid; gap: 1rem;">
+                                <?php foreach ($user_businesses as $business): ?>
+                                    <div class="business-card" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; padding: 1.5rem; position: relative;">
+                                        
+                                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                            <div style="flex: 1;">
+                                                <h4 style="margin: 0 0 0.5rem 0; color: #333; font-size: 1.25rem;"><?= e($business['name']) ?></h4>
+                                                <?php if ($business['description']): ?>
+                                                    <p style="margin: 0 0 0.5rem 0; color: #6c757d;"><?= e($business['description']) ?></p>
+                                                <?php endif; ?>
+                                                
+                                                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; font-size: 0.875rem; color: #6c757d;">
+                                                    <?php if ($business['email']): ?>
+                                                        <span>📧 <?= e($business['email']) ?></span>
+                                                    <?php endif; ?>
+                                                    <?php if ($business['phone']): ?>
+                                                        <span>📞 <?= e($business['phone']) ?></span>
+                                                    <?php endif; ?>
+                                                    <?php if ($business['website']): ?>
+                                                        <span>🌐 <a href="<?= e($business['website']) ?>" target="_blank" style="color: #007bff;"><?= e($business['website']) ?></a></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <a href="/business?edit=<?= $business['id'] ?>" 
+                                               style="background: #007bff; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; text-decoration: none; font-weight: 500;">
+                                                Edit Business
+                                            </a>
+                                        </div>
+                                        
+                                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef; font-size: 0.75rem; color: #6c757d;">
+                                            Created: <?= date('M j, Y g:i A', strtotime($business['created_at'])) ?> | 
+                                            Updated: <?= date('M j, Y g:i A', strtotime($business['updated_at'])) ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Create Business Modal -->
+                <div id="createBusinessModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+                    <div style="background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; position: relative;">
+                        <div style="padding: 2rem; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; color: #333;">Create Your Business</h3>
+                            <button id="closeModalBtn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6c757d; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                                &times;
+                            </button>
+                        </div>
+                        
+                        <div style="padding: 2rem;">
+                            <form id="createBusinessForm" method="POST" style="display: grid; gap: 1rem;">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="create_business">
+                                <input type="hidden" name="redirect_url" value="/business">
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <label for="modal_name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Business Name *</label>
+                                        <input type="text" id="modal_name" name="name" required 
+                                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="modal_email" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Business Email</label>
+                                        <input type="email" id="modal_email" name="email" 
+                                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label for="modal_description" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Description</label>
+                                    <textarea id="modal_description" name="description" rows="3" 
+                                              style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; resize: vertical;"></textarea>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div>
+                                        <label for="modal_phone" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Phone</label>
+                                        <input type="tel" id="modal_phone" name="phone" 
+                                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="modal_website" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Website</label>
+                                        <input type="url" id="modal_website" name="website" 
+                                               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label for="modal_address" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Address</label>
+                                    <textarea id="modal_address" name="address" rows="2" 
+                                              style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; resize: vertical;"></textarea>
+                                </div>
+                                
+                                <div>
+                                    <label for="modal_logo_url" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Logo URL</label>
+                                    <input type="url" id="modal_logo_url" name="logo_url" 
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                </div>
+                                
+                                <div style="display: flex; gap: 1rem; margin-top: 1rem; justify-content: flex-end;">
+                                    <button type="button" id="cancelModalBtn" 
+                                            style="background: #6c757d; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600;">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" 
+                                            style="background: #007bff; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600;">
+                                        Create Business
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <script>
+                $(document).ready(function() {
+                    // Open modal when create button is clicked
+                    $('#createBusinessBtn').click(function() {
+                        $('#createBusinessModal').css('display', 'flex');
+                        $('body').css('overflow', 'hidden'); // Prevent background scrolling
+                    });
+                    
+                    // Close modal functions
+                    function closeModal() {
+                        $('#createBusinessModal').hide();
+                        $('body').css('overflow', 'auto'); // Restore scrolling
+                        // Reset form
+                        $('#createBusinessForm')[0].reset();
+                    }
+                    
+                    // Close modal when X button is clicked
+                    $('#closeModalBtn').click(closeModal);
+                    
+                    // Close modal when Cancel button is clicked
+                    $('#cancelModalBtn').click(closeModal);
+                    
+                    // Close modal when clicking outside the modal content
+                    $('#createBusinessModal').click(function(e) {
+                        if (e.target === this) {
+                            closeModal();
+                        }
+                    });
+                    
+                    // Close modal with Escape key
+                    $(document).keydown(function(e) {
+                        if (e.key === 'Escape' && $('#createBusinessModal').is(':visible')) {
+                            closeModal();
+                        }
+                    });
+                });
+                </script>
+            </div> <!--</Business Management Page>-->
         <!--Manajemen User - Parent Page-->
             <!--<Manajemen User - Admin dan Karyawan Page>-->
                 <?php break; case 'teams':?>
