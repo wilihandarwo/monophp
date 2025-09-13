@@ -257,10 +257,12 @@
                     website VARCHAR(255),
                     logo_url TEXT,
                     status VARCHAR(50) DEFAULT 'active',
+                    is_current INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );"
+                );",
+                '2025_05_01_100000_add_is_current_to_businesses' => "ALTER TABLE businesses ADD COLUMN is_current INTEGER DEFAULT 0;"
             ];
 
             $pdo = get_db_connection();
@@ -506,24 +508,95 @@
                 return false;
             }
         }
-    // Set current business in session
+    // Set current business in database
         function set_current_business(int $business_id): bool {
             $business = get_business_by_id($business_id);
-
-            if ($business) {
-                $_SESSION['current_business'] = $business;
-                return true;
+            $user = get_user();
+            
+            if (!$business || !$user) {
+                return false;
             }
-
-            return false;
+            
+            $pdo = get_db_connection();
+            
+            try {
+                // Begin transaction
+                $pdo->beginTransaction();
+                
+                // First, reset all businesses for this user
+                $stmt = $pdo->prepare("UPDATE businesses SET is_current = 0 WHERE user_id = :user_id");
+                $stmt->execute([':user_id' => $user['id']]);
+                
+                // Then set the selected business as current
+                $stmt = $pdo->prepare("UPDATE businesses SET is_current = 1 WHERE id = :id AND user_id = :user_id");
+                $success = $stmt->execute([
+                    ':id' => $business_id,
+                    ':user_id' => $user['id']
+                ]);
+                
+                // Also store in session for backward compatibility during transition
+                $_SESSION['current_business'] = $business;
+                
+                // Commit transaction
+                $pdo->commit();
+                
+                return $success;
+            } catch (PDOException $e) {
+                // Rollback transaction on error
+                $pdo->rollBack();
+                error_log("Failed to set current business: " . $e->getMessage());
+                return false;
+            }
         }
-    // Get current business from session
+    // Get current business from database
         function get_current_business(): ?array {
-            return $_SESSION['current_business'] ?? null;
+            $user = get_user();
+            
+            if (!$user) {
+                return null;
+            }
+            
+            $pdo = get_db_connection();
+            
+            try {
+                $stmt = $pdo->prepare("
+                    SELECT * FROM businesses
+                    WHERE user_id = :user_id AND is_current = 1 AND status = 'active'
+                    LIMIT 1
+                ");
+                
+                $stmt->execute([':user_id' => $user['id']]);
+                $business = $stmt->fetch();
+                
+                return $business ?: null;
+            } catch (PDOException $e) {
+                error_log("Failed to get current business: " . $e->getMessage());
+                // Fallback to session for backward compatibility during transition
+                return $_SESSION['current_business'] ?? null;
+            }
         }
-    // Clear current business from session
-        function clear_current_business(): void {
-            unset($_SESSION['current_business']);
+    // Clear current business from database
+        function clear_current_business(): bool {
+            $user = get_user();
+            
+            if (!$user) {
+                return false;
+            }
+            
+            $pdo = get_db_connection();
+            
+            try {
+                $stmt = $pdo->prepare("UPDATE businesses SET is_current = 0 WHERE user_id = :user_id");
+                $success = $stmt->execute([':user_id' => $user['id']]);
+                
+                // Also clear from session for backward compatibility
+                unset($_SESSION['current_business']);
+                
+                return $success;
+            } catch (PDOException $e) {
+                error_log("Failed to clear current business: " . $e->getMessage());
+                return false;
+            }
         }
 // </business-management>
 
@@ -932,6 +1005,9 @@
                                 ];
                                 $_SESSION['login_time'] = time();
                                 $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                                
+                                // No need to restore from cookie as current business is stored in database
+                                // The get_current_business() function will automatically fetch from database
 
                                 // Redirect to dashboard
                                 redirect('/dashboard');
@@ -960,6 +1036,8 @@
         }
     // Handle logout with comprehensive cleanup
         if (isset($_GET['logout']) || $path === 'logout') {
+            // No need to save business ID to cookie as it's now stored in the database
+            
             // Clear all session data
             $_SESSION = array();
 
@@ -973,19 +1051,12 @@
             }
 
             // Clear any OAuth-related cookies
-            $cookie_options = [
-                'expires' => time() - 3600,
-                'path' => '/',
-                'domain' => '',
-                'secure' => isset($_SERVER['HTTPS']),
-                'httponly' => true,
-                'samesite' => 'Lax'
-            ];
-
+            $expire_time = time() - 3600; // Set expiration to the past
+            
             // Clear potential OAuth cookies
-            setcookie('oauth_state', '', $cookie_options);
-            setcookie('google_auth', '', $cookie_options);
-
+            setcookie('oauth_state', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+            setcookie('google_auth', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+            
             // Destroy session
             session_destroy();
 
