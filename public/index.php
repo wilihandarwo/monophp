@@ -233,6 +233,7 @@
                     email VARCHAR(255) UNIQUE NOT NULL,
                     picture TEXT,
                     role VARCHAR(255) DEFAULT 'user',
+                    is_paid INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );");
@@ -262,7 +263,8 @@
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );",
-                '2025_05_01_100000_add_is_current_to_businesses' => "ALTER TABLE businesses ADD COLUMN is_current INTEGER DEFAULT 0;"
+                '2025_05_01_100000_add_is_current_to_businesses' => "ALTER TABLE businesses ADD COLUMN is_current INTEGER DEFAULT 0;",
+                '2025_06_01_100000_add_is_paid_to_users' => "ALTER TABLE users ADD COLUMN is_paid INTEGER DEFAULT 0;"
             ];
 
             $pdo = get_db_connection();
@@ -364,6 +366,12 @@
     // Gets the current user's data from the session.
         function get_user(): ?array {
             return $_SESSION["user"] ?? null;
+        }
+        
+    // Checks if the current user is a paid user
+        function is_paid_user(): bool {
+            $user = get_user();
+            return ($user && isset($user['is_paid']) && $user['is_paid'] == 1);
         }
 // </authentication>
 
@@ -749,6 +757,7 @@
                         'email' => $google_user['email'],
                         'picture' => $google_user['picture'],
                         'role' => $user['role'] ?? 'user',
+                        'is_paid' => $user['is_paid'] ?? 0,
                         'created_at' => $user['created_at'],
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
@@ -776,6 +785,7 @@
                         'email' => $google_user['email'],
                         'picture' => $google_user['picture'],
                         'role' => 'user',
+                        'is_paid' => 0,
                         'created_at' => date('Y-m-d H:i:s'),
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
@@ -1000,6 +1010,7 @@
                                     'email' => $db_user['email'],
                                     'picture' => $db_user['picture'],
                                     'role' => $db_user['role'] ?? 'user',
+                                    'is_paid' => $db_user['is_paid'] ?? 0,
                                     'created_at' => $db_user['created_at'],
                                     'updated_at' => $db_user['updated_at']
                                 ];
@@ -2262,8 +2273,11 @@
                     <ul>
                         <li class="nav-item"><a href="/dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
 
-                         <li class="nav-item"><a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>"><i class="fas fa-building"></i>Business</a></li>
 
+                        <?php if (is_paid_user()): // Only show these menus for paid users ?>
+                        
+                        <li class="nav-item"><a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>"><i class="fas fa-building"></i>Business</a></li>
+                        
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'teams' && 'customers' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-users"></i>Manajemen User</span>
@@ -2276,7 +2290,7 @@
                         </li>
 
                         <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'produk' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
-
+                       
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-store"></i>Stock Emas</span>
@@ -2353,6 +2367,9 @@
                                 <li><a href="#" class="nav-link">Lokasi</a></li>
                             </ul>
                         </li>
+                        <?php endif; ?>
+
+                        
 
                     </ul>
                 </nav>
@@ -2627,11 +2644,28 @@
             <div class="dashboard-content">
                 <div class="dashboard-content-wrapper">
                     <div class="dashboard-header">
-                        <h2>Create a Test Member</h2>
-                        <p>Create your first member to change their plans, edit custom fields, login as that person, etc.</p>
+                        <h2>Welcome to Your Dashboard</h2>
+                        <p>Manage your business and access available features.</p>
                     </div>
+                    
+                    <?php if (!is_paid_user()): // Show upgrade banner for free users ?>
+                    <div class="upgrade-banner" style="background: linear-gradient(135deg, #4a6cf7, #2541b2); color: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h3 style="margin-top: 0; font-size: 1.5rem;">Upgrade to Paid Plan</h3>
+                        <p style="margin-bottom: 1rem;">Unlock all features including User Management, Product Management, Stock Management, and more!</p>
+                        <p style="margin-bottom: 1rem;">With the paid plan, you'll get:</p>
+                        <ul style="margin-bottom: 1.5rem; padding-left: 1.5rem;">
+                            <li>Complete user management system</li>
+                            <li>Product inventory and tracking</li>
+                            <li>Stock management tools</li>
+                            <li>Financial reporting</li>
+                            <li>And much more!</li>
+                        </ul>
+                        <p style="font-size: 0.9rem; margin-bottom: 0;">Contact the administrator to upgrade your account to a paid plan.</p>
+                    </div>
+                    <?php else: ?>
 
-                    <div class="dashboard-cards">
+                        <div class="dashboard-cards">
+
                     <div class="dashboard-card">
                         <div class="card-header">
                             <div class="card-icon">👥</div>
@@ -2833,7 +2867,14 @@
                             <p>Track performance metrics and gain insights into your platform.</p>
                         </div>
                     </div>
+
                 </div>
+
+
+                    <?php endif; ?>
+
+                    
+
             </div>
         <!--<Toko Page>-->
             <?php break; case 'business':?>
