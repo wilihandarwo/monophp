@@ -1114,25 +1114,25 @@
 
 // <routing>
     // Define routes grouped by category
-    // [name of url / slug] => ['page' => [title of switch case logic in html], 'title' => 'Dashboard - MonoPHP'],
-    // 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
+    // [name of url / slug] => ['page' => [title of switch case logic in html], 'title' => 'Dashboard - MonoPHP', 'paid_only' => true/false],
+    // 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP', 'paid_only' => false],
         $route_categories = [
             'public' => [
-                '' => ['page' => 'home', 'title' => 'MonoPHP'],
-                'home' => ['page' => 'home', 'title' => 'MonoPHP'],
-                'about' => ['page' => 'about', 'title' => 'About - MonoPHP'],
-                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP']
+                '' => ['page' => 'home', 'title' => 'MonoPHP', 'paid_only' => false],
+                'home' => ['page' => 'home', 'title' => 'MonoPHP', 'paid_only' => false],
+                'about' => ['page' => 'about', 'title' => 'About - MonoPHP', 'paid_only' => false],
+                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP', 'paid_only' => false]
             ],
             'dashboard' => [
-                'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
-                'business' => ['page' => 'business', 'title' => 'Dashboard - MonoPHP'],
-                'user-management/teams' => ['page' => 'teams', 'title' => 'Admin dan Karyawan - MonoPHP'],
-                'user-management/customers' => ['page' => 'customers', 'title' => 'Dashboard - MonoPHP'],
-                'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP']
+                'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP', 'paid_only' => false],
+                'business' => ['page' => 'business', 'title' => 'Dashboard - MonoPHP', 'paid_only' => true],
+                'user-management/teams' => ['page' => 'teams', 'title' => 'Admin dan Karyawan - MonoPHP', 'paid_only' => true],
+                'user-management/customers' => ['page' => 'customers', 'title' => 'Dashboard - MonoPHP', 'paid_only' => true],
+                'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP', 'paid_only' => true]
             ],
             'other' => [
-                'auth/google/callback' => ['page' => 'oauth_callback', 'title' => 'MonoPHP'],
-                'logout' => ['page' => 'logout', 'title' => 'MonoPHP']
+                'auth/google/callback' => ['page' => 'oauth_callback', 'title' => 'MonoPHP', 'paid_only' => false],
+                'logout' => ['page' => 'logout', 'title' => 'MonoPHP', 'paid_only' => false]
             ]
         ];
 
@@ -1163,12 +1163,9 @@
         }
         
     // Protect paid-only features
-        $paid_only_routes = [
-            'user-management/teams',
-            'user-management/customers'
-        ];
-        
-        if (in_array($path, $paid_only_routes) && !is_paid_user()) {
+        if (isset($route_categories[$page_category][$path]['paid_only']) && 
+            $route_categories[$page_category][$path]['paid_only'] === true && 
+            !is_paid_user()) {
             // Set a message to inform the user why they were redirected
             $_SESSION['messages'][] = 'This feature is only available for paid users. Please upgrade your account to access it.';
             redirect('/dashboard');
