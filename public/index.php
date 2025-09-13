@@ -2094,6 +2094,54 @@
                  display: inline-flex;
                  justify-content: center;
              }
+             
+             /* Business info in sidebar styles */
+             .business-info-sidebar {
+                 padding: 0.75rem 1.5rem;
+                 margin-bottom: 0.5rem;
+                 border-bottom: 1px solid #e5e7eb;
+             }
+             
+             .business-info-sidebar h4 {
+                 margin: 0 0 0.5rem 0;
+                 color: #111827;
+                 font-weight: 600;
+                 font-size: 0.95rem;
+             }
+             
+             .business-info-sidebar .business-address {
+                 font-size: 0.8rem;
+                 color: #6b7280;
+                 margin: 0;
+                 display: flex;
+                 align-items: center;
+                 gap: 0.5rem;
+             }
+             
+             .business-setup-sidebar {
+                 padding: 0.75rem 1.5rem;
+                 margin-bottom: 0.5rem;
+                 border-bottom: 1px solid #e5e7eb;
+             }
+             
+             .business-setup-btn {
+                 display: flex;
+                 align-items: center;
+                 gap: 0.5rem;
+                 padding: 0.5rem 0.75rem;
+                 background: #f3f4f6;
+                 border-radius: 6px;
+                 color: #3b82f6;
+                 font-size: 0.85rem;
+                 font-weight: 500;
+                 text-decoration: none;
+                 transition: all 0.2s ease;
+             }
+             
+             .business-setup-btn:hover {
+                 background: #e5e7eb;
+                 color: #2563eb;
+             }
              </style>
 
              <script>
@@ -2118,6 +2166,25 @@
                             <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
                         </a>
                 </div>
+                
+                <?php
+                // <business-info-sidebar>
+                $current_business = get_current_business();
+                if ($current_business): ?>
+                <div class="business-info-sidebar">
+                    <h4><?= e($current_business['name']) ?></h4>
+                    <?php if (!empty($current_business['address'])): ?>
+                    <p class="business-address"><i class="fas fa-map-marker-alt"></i> <?= e($current_business['address']) ?></p>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <div class="business-setup-sidebar">
+                    <a href="/business" class="business-setup-btn">
+                        <i class="fas fa-plus-circle"></i> Setup Business
+                    </a>
+                </div>
+                <?php endif; ?>
+                <!-- </business-info-sidebar> -->
 
                 <nav class="sidebar-nav">
                     <ul>
@@ -2832,7 +2899,14 @@
                         <?php else: ?>
                             <div style="display: grid; gap: 1rem;">
                                 <?php foreach ($user_businesses as $business): ?>
-                                    <div class="business-card" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; padding: 1.5rem; position: relative;">
+                                    <?php
+                                    $current_business_id = isset($_SESSION['current_business']['id']) ? $_SESSION['current_business']['id'] : 0;
+                                    $is_current = $current_business_id == $business['id'];
+                                    $border_style = $is_current ? '2px solid #28a745' : '1px solid #e9ecef';
+                                    $badge = $is_current ? '<span style="position: absolute; top: 10px; right: 10px; background: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Current</span>' : '';
+                                    ?>
+                                    <div class="business-card" style="background: white; border: <?= $border_style ?>; border-radius: 12px; padding: 1.5rem; position: relative;">
+                                    <?= $badge ?>
 
                                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                                             <div style="flex: 1;">
@@ -2860,6 +2934,17 @@
                                                style="background: #007bff; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; text-decoration: none; font-weight: 500;">
                                                 Edit Business
                                             </a>
+                                            <?php if (!$is_current): ?>
+                                            <form method="POST" style="display: inline;">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="action" value="set_current_business">
+                                                <input type="hidden" name="business_id" value="<?= $business['id'] ?>">
+                                                <button type="submit"
+                                                       style="background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; border: none; cursor: pointer; font-weight: 500;">
+                                                    Set as Current Business
+                                                </button>
+                                            </form>
+                                            <?php endif; ?>
                                         </div>
 
                                         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef; font-size: 0.75rem; color: #6c757d;">
