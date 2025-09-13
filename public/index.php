@@ -2241,14 +2241,27 @@
             <!--User Profile Dropdown Script-->
             <script>
             $(function() {
-                // Restore sidebar state on page load
+                // Restore sidebar state on page load, but only if it's relevant to the current page
                 var openSubmenu = localStorage.getItem('openSubmenu');
+                var currentPage = '<?= $current_page ?>';
+                
                 if (openSubmenu) {
                     $('.nav-item').each(function() {
                         var $navItem = $(this);
                         var $link = $navItem.find('.nav-link.has-submenu');
                         var linkText = $link.find('span').text().trim();
-                        if (linkText === openSubmenu) {
+                        
+                        // Check if this submenu contains the current page
+                        var containsCurrentPage = false;
+                        $navItem.find('.submenu .nav-link').each(function() {
+                            var href = $(this).attr('href');
+                            if (href && href.includes(currentPage)) {
+                                containsCurrentPage = true;
+                            }
+                        });
+                        
+                        // Only open the submenu if it matches stored value AND contains current page
+                        if (linkText === openSubmenu && containsCurrentPage) {
                             $navItem.addClass('open');
                         }
                     });
@@ -2270,6 +2283,28 @@
                     e.stopPropagation();
                 });
 
+                // Function to check if current page belongs to any submenu
+                function isCurrentPageInSubmenu() {
+                    var currentPage = '<?= $current_page ?>';
+                    var found = false;
+                    
+                    $('.submenu .nav-link').each(function() {
+                        var href = $(this).attr('href');
+                        if (href && href.includes(currentPage)) {
+                            found = true;
+                            return false; // break the loop
+                        }
+                    });
+                    
+                    return found;
+                }
+                
+                // Close all submenus if current page doesn't belong to any submenu
+                if (!isCurrentPageInSubmenu()) {
+                    $('.nav-item.open').removeClass('open');
+                    localStorage.removeItem('openSubmenu');
+                }
+                
                 // Submenu toggle functionality
                 $('.nav-link.has-submenu').click(function(e) {
                     e.preventDefault();
@@ -2300,7 +2335,12 @@
                     var $parentNavItem = $(this).closest('.nav-item');
                     var $parentLink = $parentNavItem.find('.nav-link.has-submenu');
                     var parentLinkText = $parentLink.find('span').text().trim();
-                    localStorage.setItem('openSubmenu', parentLinkText);
+                    var clickedHref = $(this).attr('href');
+                    
+                    // Only save state if this is a navigation within the same submenu section
+                    if (clickedHref) {
+                        localStorage.setItem('openSubmenu', parentLinkText);
+                    }
 
                     // Remove active class from all submenu items
                     $('.submenu .nav-link').removeClass('active');
