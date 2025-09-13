@@ -368,6 +368,36 @@
             return $_SESSION["user"] ?? null;
         }
         
+    // Refreshes the current user's data from the database
+        function refresh_user_data(): bool {
+            if (!isset($_SESSION["user"]) || !isset($_SESSION["user"]["id"])) {
+                return false;
+            }
+            
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+            $stmt->execute([$_SESSION["user"]["id"]]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($user) {
+                // Update session with fresh data from database
+                $_SESSION['user'] = [
+                    'id' => $user['id'],
+                    'google_id' => $user['google_id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'picture' => $user['picture'],
+                    'role' => $user['role'] ?? 'user',
+                    'is_paid' => $user['is_paid'] ?? 0,
+                    'created_at' => $user['created_at'],
+                    'updated_at' => $user['updated_at']
+                ];
+                return true;
+            }
+            
+            return false;
+        }
+        
     // Checks if the current user is a paid user
         function is_paid_user(): bool {
             $user = get_user();
@@ -1116,6 +1146,12 @@
         }
     // Check if user is logged in
         $is_logged_in = is_logged_in();
+        
+    // Refresh user data from database if logged in
+        if ($is_logged_in) {
+            refresh_user_data();
+        }
+        
     // Protect dashboard pages
         if ($page_category === 'dashboard' && !$is_logged_in) {
             redirect('/');
