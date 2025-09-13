@@ -2787,7 +2787,7 @@
                 <div class="content-body">
                      <!-- Current Business Display -->
                 <?php if ($current_business): ?>
-                <div class="current-business-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                <div class="current-business-banner" style="background: var(--primary-color); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between;">
                         <div>
                             <h4 style="margin: 0; font-size: 1.1rem;">Current Business</h4>
