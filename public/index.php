@@ -833,6 +833,11 @@
         $messages = [];
         $user = get_user();
         $pdo = get_db_connection();
+        
+        // Initialize session messages array if not set
+        if (!isset($_SESSION['messages'])) {
+            $_SESSION['messages'] = [];
+        }
 // </view-initialization>
 
 // <post-request-handling>
@@ -1155,6 +1160,18 @@
     // Protect dashboard pages
         if ($page_category === 'dashboard' && !$is_logged_in) {
             redirect('/');
+        }
+        
+    // Protect paid-only features
+        $paid_only_routes = [
+            'user-management/teams',
+            'user-management/customers'
+        ];
+        
+        if (in_array($path, $paid_only_routes) && !is_paid_user()) {
+            // Set a message to inform the user why they were redirected
+            $_SESSION['messages'][] = 'This feature is only available for paid users. Please upgrade your account to access it.';
+            redirect('/dashboard');
         }
     // Set user data for dashboard pages
         $user = ($page_category === 'dashboard' && $is_logged_in) ? $_SESSION['user'] : null;
@@ -2679,6 +2696,18 @@
             ?>
             <div class="dashboard-content">
                 <div class="dashboard-content-wrapper">
+                    <?php if (isset($_SESSION['messages']) && !empty($_SESSION['messages'])): ?>
+                        <div class="messages" style="background-color: #d4edda; color: #155724; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; border-left: 4px solid #28a745;">
+                            <?php foreach ($_SESSION['messages'] as $message): ?>
+                                <p style="margin: 0.5rem 0;"><?= e($message) ?></p>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php 
+                        // Clear messages after displaying them
+                        $_SESSION['messages'] = [];
+                        ?>
+                    <?php endif; ?>
+                    
                     <div class="dashboard-header">
                         <h2>Welcome to Your Dashboard</h2>
                         <p>Manage your business and access available features.</p>
