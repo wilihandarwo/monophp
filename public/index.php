@@ -1707,160 +1707,270 @@
 <?php } elseif($page_category === 'dashboard') { ?>
 <!-- <dashboard-container>  -->
     <div class="dashboard-container">
-    <!--Sidebar-->
-        <!--// Sidebar Style-->
+    <!--Top Navigation-->
+        <!--// Top Navigation Style-->
             <style>
-            .sidebar {
-                width: 280px;
-                background: #f8f9fb;
-                color: #333;
-                display: flex;
-                flex-direction: column;
+            .dashboard-header-nav {
+                background: white;
+                border-bottom: 1px solid #e5e7eb;
                 position: fixed;
-                height: 100vh;
-                left: 0;
                 top: 0;
+                left: 0;
+                right: 0;
                 z-index: 1000;
+                height: 70px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
 
-            .sidebar-header {
-                padding: 1.5rem 1.5rem 1rem 1.5rem;
-                border-bottom: none;
+            .nav-container {
+                max-width: 100%;
+                height: 100%;
+                padding: 0 2rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .nav-logo {
+                display: flex;
+                align-items: center;
+            }
+
+            .nav-logo img {
+                height: 40px;
+                width: auto;
+            }
+
+            .nav-menu {
+                display: flex;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                align-items: center;
+                gap: 0.5rem;
+                flex: 1;
+                margin-left: 3rem;
+            }
+
+            .nav-item {
+                position: relative;
+            }
+
+            .nav-link {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                color: #4b5563;
+                text-decoration: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+
+            .nav-link:hover {
+                background: #f3f4f6;
+                color: #111827;
+            }
+
+            .nav-link.active {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .nav-link i {
+                font-size: 14px;
+            }
+
+            .submenu-toggle {
+                font-size: 10px;
+                margin-left: 0.25rem;
+                transition: transform 0.2s;
+            }
+
+            .nav-item:hover .submenu-toggle {
+                transform: rotate(180deg);
+            }
+
+            .submenu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                min-width: 200px;
+                padding: 0.5rem;
+                margin-top: 0.5rem;
+                list-style: none;
+                z-index: 1001;
+            }
+
+            .nav-item:hover .submenu {
+                display: block;
+            }
+
+            .submenu li {
+                margin: 0;
+            }
+
+            .submenu .nav-link {
+                padding: 0.5rem 0.75rem;
+                display: block;
+                border-radius: 4px;
+                font-size: 13px;
+            }
+
+            .submenu .nav-link:hover {
+                background: #f3f4f6;
+            }
+
+            .nav-right {
+                display: flex;
+                align-items: center;
+                gap: 1.5rem;
+            }
+
+            .business-info-header {
                 display: flex;
                 align-items: center;
                 gap: 0.75rem;
+                padding: 0.5rem 1rem;
+                background: #f9fafb;
+                border-radius: 8px;
+                border: 1px solid #e5e7eb;
             }
 
-            .sidebar-header img {
-                width: 200px;
-                height: auto;
-                display: block;
+            .business-info-header h4 {
+                margin: 0;
+                font-size: 14px;
+                font-weight: 600;
+                color: #111827;
+            }
+
+            .business-info-header p {
+                margin: 0;
+                font-size: 12px;
+                color: #6b7280;
+            }
+
+            .business-setup-header {
+                display: flex;
+                align-items: center;
+            }
+
+            .business-setup-btn {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                background: #2563eb;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                transition: background 0.2s;
+            }
+
+            .business-setup-btn:hover {
+                background: #1d4ed8;
+            }
+
+            .user-profile {
+                position: relative;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.5rem;
+                cursor: pointer;
+                border-radius: 8px;
+                transition: background 0.2s;
+            }
+
+            .user-profile:hover {
+                background: #f9fafb;
+            }
+
+            .user-avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                overflow: hidden;
+                background: #e5e7eb;
+                display: flex;
                 align-items: center;
                 justify-content: center;
             }
 
-            .sidebar-header h3 {
-                margin: 0;
-                color: #111827;
-                font-weight: 600;
-                font-size: 1.125rem;
-            }
-
-            .workspace-selector {
-                padding: 0 1.5rem 1rem 1.5rem;
-                margin-bottom: 0.5rem;
-            }
-
-            .workspace-btn {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
+            .user-avatar img {
                 width: 100%;
-                padding: 0.75rem 1rem;
-                /* background: #f3f4f6; */
-                border: 0px;
-                border-radius: 8px;
-                /* color: #374151; */
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s ease;
+                height: 100%;
+                object-fit: cover;
             }
 
-            .workspace-btn:hover {
-                background: #e5e7eb;
+            .user-info {
+                display: flex;
+                flex-direction: column;
             }
 
-            .business-selector {
-                position: relative;
+            .user-name {
+                font-size: 14px;
+                font-weight: 600;
+                color: #111827;
+                line-height: 1.2;
             }
 
-            .business-dropdown {
+            .user-dropdown {
+                display: none;
                 position: absolute;
                 top: 100%;
-                left: 0;
                 right: 0;
                 background: white;
                 border: 1px solid #e5e7eb;
                 border-radius: 8px;
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                min-width: 200px;
+                padding: 0.5rem;
                 margin-top: 0.5rem;
                 z-index: 1001;
-                max-height: 300px;
-                overflow-y: auto;
             }
 
-            .business-dropdown .dropdown-item {
+            .user-dropdown.show {
+                display: block;
+            }
+
+            .dropdown-item {
                 display: flex;
                 align-items: center;
-                padding: 0.75rem 1rem;
-                color: #374151;
+                gap: 0.75rem;
+                padding: 0.75rem;
+                color: #4b5563;
                 text-decoration: none;
-                font-size: 0.875rem;
-                transition: background 0.2s ease;
-                border: none;
-                width: 100%;
-                text-align: left;
+                border-radius: 6px;
+                font-size: 14px;
+                transition: all 0.2s;
             }
 
-            .business-dropdown .dropdown-item:hover {
-                background: #f9fafb;
-            }
-
-            .business-dropdown .dropdown-divider {
-                height: 1px;
-                background: #e5e7eb;
-                margin: 0.5rem 0;
-            }
-
-            .business-item:focus {
-                outline: none;
+            .dropdown-item:hover {
                 background: #f3f4f6;
+                color: #111827;
             }
 
-            .workspace-icon {
-                width: 24px;
-                height: 24px;
-                background: #6b7280;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 0.75rem;
-                font-weight: bold;
-                margin-right: 0.75rem;
+            .dropdown-icon {
+                font-size: 14px;
+                width: 16px;
             }
 
-            .progress-bar {
-                width: 100%;
-                height: 4px;
-                background: #bfdbfe;
-                border-radius: 2px;
-                margin-top: 0.5rem;
-                overflow: hidden;
-            }
 
-            .progress-fill {
-                width: 100%;
-                height: 100%;
-                background: #3b82f6;
-                border-radius: 2px;
-            }
 
-            .sidebar-nav {
-                flex: 1;
-                padding: 0 0 0 12px;
-            }
 
-            .sidebar-nav ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
-            }
 
-            .sidebar-nav li {
-                margin: 0;
-            }
+
 
             .nav-link {
                 display: flex;
@@ -1956,10 +2066,7 @@
                 font-weight: 500;
             }
 
-            .sidebar-footer {
-                padding: 1rem 1.5rem;
-                border-top: 1px solid #e5e7eb;
-            }
+
 
 
             .search-icon {
@@ -2057,109 +2164,41 @@
                  justify-content: center;
              }
 
-             /* Business info in sidebar styles */
-             .business-info-sidebar {
-                 padding: 0.75rem 1.5rem;
-                 margin-bottom: 0.5rem;
-                 border-bottom: 1px solid #e5e7eb;
-             }
-
-             .business-info-sidebar h4 {
-                 margin: 0 0 0.5rem 0;
-                 color: #111827;
-                 font-weight: 600;
-                 font-size: 0.95rem;
-             }
-
-             .business-info-sidebar .business-address {
-                 font-size: 0.8rem;
-                 color: #6b7280;
-                 margin: 0;
-                 display: flex;
-                 align-items: center;
-                 gap: 0.5rem;
-             }
-
-             .business-setup-sidebar {
-                 padding: 0.75rem 1.5rem;
-                 margin-bottom: 0.5rem;
-                 border-bottom: 1px solid #e5e7eb;
-             }
-
-             .business-setup-btn {
-                 display: flex;
-                 align-items: center;
-                 gap: 0.5rem;
-                 padding: 0.5rem 0.75rem;
-                 background: #f3f4f6;
-                 border-radius: 6px;
-                 color: #3b82f6;
-                 font-size: 0.85rem;
-                 font-weight: 500;
-                 text-decoration: none;
-                 transition: all 0.2s ease;
-             }
-
-             .business-setup-btn:hover {
+             /* Business setup button already styled in nav-right section */
+             .old-business-setup-btn-hover {
                  background: #e5e7eb;
                  color: #2563eb;
              }
              </style>
 
-             <script>
-             function toggleBusinessDropdown() {
-                 $('#businessDropdown').toggle();
-             }
 
-             // Close dropdown when clicking outside
-             $(document).on('click', function(event) {
-                 const $selector = $('.business-selector');
-                 const $dropdown = $('#businessDropdown');
-
-                 if ($selector.length && $dropdown.length && !$selector.is(event.target) && $selector.has(event.target).length === 0) {
-                     $dropdown.hide();
-                 }
-             });
-             </script>
-        <!--// Sidebar HTML-->
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <a href="/">
+        <!--// Top Navigation HTML-->
+            <header class="dashboard-header-nav">
+                <div class="nav-container">
+                    <div class="nav-logo">
+                        <a href="/">
                             <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
                         </a>
-                </div>
+                    </div>
 
-                <?php
-                // <business-info-sidebar>
-                $current_business = get_current_business();
-                if ($current_business): ?>
-                <div class="business-info-sidebar">
-                    <h4><?= e($current_business['name']) ?></h4>
-                    <?php if (!empty($current_business['address'])): ?>
-                    <p class="business-address"><i class="fas fa-map-marker-alt"></i> <?= e($current_business['address']) ?></p>
-                    <?php endif; ?>
-                </div>
-                <?php else: ?>
-                <div class="business-setup-sidebar">
-                    <a href="/business" class="business-setup-btn">
-                        <i class="fas fa-plus-circle"></i> Setup Business
-                    </a>
-                </div>
-                <?php endif; ?>
-                <!-- </business-info-sidebar> -->
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <a href="/dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>">
+                                <i class="fas fa-home"></i> Dashboard
+                            </a>
+                        </li>
 
-                <nav class="sidebar-nav">
-                    <ul>
-                        <li class="nav-item"><a href="/dashboard" class="nav-link <?= $current_page === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i>Dashboard</a></li>
-
-
-                        <?php if (is_paid_user()): // Only show these menus for paid users ?>
-
-                        <li class="nav-item"><a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>"><i class="fas fa-building"></i>Business</a></li>
+                        <?php if (is_paid_user()): ?>
+                        
+                        <li class="nav-item">
+                            <a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>">
+                                <i class="fas fa-building"></i> Business
+                            </a>
+                        </li>
 
                         <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'teams' && 'customers' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-users"></i>Manajemen User</span>
+                            <a href="#" class="nav-link has-submenu">
+                                <i class="fas fa-users"></i> Manajemen User
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
@@ -2168,111 +2207,88 @@
                             </ul>
                         </li>
 
-                        <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'produk' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
-
                         <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-store"></i>Stock Emas</span>
+                            <a href="#" class="nav-link has-submenu">
+                                <i class="fas fa-store"></i> Stock Emas
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
                                 <li><a href="#" class="nav-link">Kepemilikan Barang</a></li>
                                 <li><a href="#" class="nav-link">Jual & Beli</a></li>
                                 <li><a href="#" class="nav-link">Biaya Operasional</a></li>
-                                <li><a href="#" class="nav-link">Biaya Non Operasional</a></li>
                             </ul>
                         </li>
 
                         <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-hand-holding-dollar"></i>Buyback Emas</span>
-                                <i class="fas fa-chevron-down submenu-toggle"></i>
-                            </a>
-                            <ul class="submenu">
-                                <li><a href="#" class="nav-link">Kepemilikan Barang</a></li>
-                                <li><a href="#" class="nav-link">Jual & Beli</a></li>
-                                <li><a href="#" class="nav-link">Biaya Operasional</a></li>
-                                <li><a href="#" class="nav-link">Biaya Non Operasional</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-truck"></i>Pengiriman Internal</span>
-                                <i class="fas fa-chevron-down submenu-toggle"></i>
-                            </a>
-                            <ul class="submenu">
-                                <li><a href="#" class="nav-link">Shipments</a></li>
-                                <li><a href="#" class="nav-link">Masuk Jogja</a></li>
-                                <li><a href="#" class="nav-link">Keluar Jogja</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-handshake"></i>Serah Terima</span>
-                                <i class="fas fa-chevron-down submenu-toggle"></i>
-                            </a>
-                            <ul class="submenu">
-                                <li><a href="#" class="nav-link">Jogja</a></li>
-                                <li><a href="#" class="nav-link">Jabodetabek</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="nav-item">
-                            <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-cash-register"></i>Keuangan</span>
+                            <a href="#" class="nav-link has-submenu">
+                                <i class="fas fa-cash-register"></i> Keuangan
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
                                 <li><a href="#" class="nav-link">Modal</a></li>
                                 <li><a href="#" class="nav-link">Bagi Hasil</a></li>
-                                <li><a href="#" class="nav-link">Fee Akad Wakala</a></li>
-                                <li><a href="#" class="nav-link">Pengeluaran Global</a></li>
                                 <li><a href="#" class="nav-link">Laporan Keuangan</a></li>
-                                <li><a href="#" class="nav-link">Rekonsiliasi</a></li>
                             </ul>
                         </li>
 
                         <li class="nav-item">
-                            <a href="settings" class="nav-link has-submenu <?= $current_page === 'settings' ? 'active' : ''; ?>">
-                                <span><i class="fas fa-gear"></i>Settings</span>
+                            <a href="/settings" class="nav-link has-submenu <?= $current_page === 'settings' ? 'active' : ''; ?>">
+                                <i class="fas fa-gear"></i> Settings
                                 <i class="fas fa-chevron-down submenu-toggle"></i>
                             </a>
                             <ul class="submenu">
                                 <li><a href="#" class="nav-link">Harga</a></li>
                                 <li><a href="#" class="nav-link">Katalog</a></li>
-                                <li><a href="#" class="nav-link">Akun Finansial</a></li>
                                 <li><a href="#" class="nav-link">Lokasi</a></li>
                             </ul>
                         </li>
+                        
                         <?php endif; ?>
-
-
-
                     </ul>
-                </nav>
 
-                <div class="sidebar-footer">
-                    <div class="user-profile" id="userProfile">
-                        <div class="user-dropdown" id="userDropdown">
-                            <a href="#" class="dropdown-item">
-                                <i class="fas fa-user dropdown-icon"></i>
-                                Account
-                            </a>
-                            <a href="/logout" class="dropdown-item">
-                                <i class="fas fa-sign-out-alt dropdown-icon"></i>
-                                Logout
+                    <div class="nav-right">
+                        <?php
+                        $current_business = get_current_business();
+                        if ($current_business): ?>
+                        <div class="business-info-header">
+                            <div>
+                                <h4><?= e($current_business['name']) ?></h4>
+                                <?php if (!empty($current_business['address'])): ?>
+                                <p><i class="fas fa-map-marker-alt"></i> <?= e($current_business['address']) ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="business-setup-header">
+                            <a href="/business" class="business-setup-btn">
+                                <i class="fas fa-plus-circle"></i> Setup Business
                             </a>
                         </div>
-                        <div class="user-avatar"><img style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" src="<?= e($user['picture'] ?? 'Guest'); ?>" alt="User Avatar"></div>
-                        <div class="user-info">
-                            <div class="user-name"><?= e($user['name'] ?? 'Guest'); ?></div>
+                        <?php endif; ?>
+
+                        <div class="user-profile" id="userProfile">
+                            <div class="user-avatar">
+                                <img src="<?= e($user['picture'] ?? '/assets/images/default-avatar.png'); ?>" alt="User Avatar">
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name"><?= e($user['name'] ?? 'Guest'); ?></div>
+                            </div>
+                            <div class="user-dropdown" id="userDropdown">
+                                <a href="#" class="dropdown-item">
+                                    <i class="fas fa-user dropdown-icon"></i>
+                                    Account
+                                </a>
+                                <a href="/logout" class="dropdown-item">
+                                    <i class="fas fa-sign-out-alt dropdown-icon"></i>
+                                    Logout
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        <!--// Sidebar Script-->
+            </header>
+
+        <!--// Navigation Script-->
             <!--User Profile Dropdown Script-->
             <script>
             $(function() {
@@ -2390,14 +2406,10 @@
             <style>
             .dashboard-content {
                 flex: 1;
-                margin-left: 280px;
-                margin-right: -12px;
-                padding: 1rem 0rem 1rem 1rem;
-                position: relative;
-                top: 0;
-                height: 100vh;
+                margin-top: 70px;
+                padding: 2rem;
+                min-height: calc(100vh - 70px);
                 background: #f8f9fa;
-                overflow: hidden;
             }
 
             .dashboard-content-wrapper {
@@ -2500,23 +2512,59 @@
                 color: #6c757d;
             }
 
-            @media (max-width: 768px) {
-                .sidebar {
-                    width: 100%;
-                    height: auto;
-                    position: relative;
+            @media (max-width: 1200px) {
+                .nav-menu {
+                    gap: 0.25rem;
+                }
+
+                .nav-link {
+                    padding: 0.5rem 0.75rem;
+                    font-size: 13px;
+                }
+                
+                .business-info-header {
+                    display: none;
+                }
+            }
+
+            @media (max-width: 1024px) {
+                .nav-menu {
+                    display: none;
+                }
+
+                .nav-container {
+                    padding: 0 1rem;
                 }
 
                 .dashboard-content {
-                    margin-left: 0;
                     padding: 1rem;
                 }
+            }
 
-                .dashboard-layout {
-                    flex-direction: column;
+            @media (max-width: 768px) {
+                .dashboard-header-nav {
+                    height: 60px;
+                }
+                
+                .nav-logo img {
+                    height: 35px;
+                }
+                
+                .business-info-header,
+                .business-setup-header {
+                    display: none;
+                }
+
+                .user-info {
+                    display: none;
+                }
+                
+                .dashboard-content {
+                    margin-top: 60px;
                 }
             }
             </style>
+        <!--Dashboard Content-->
         <!--Dashboard Page-->
             <?php switch ($current_page) { case 'dashboard':
             ?>
