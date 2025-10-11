@@ -263,8 +263,6 @@
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );",
-                '2025_05_01_100000_add_is_current_to_businesses' => "ALTER TABLE businesses ADD COLUMN is_current INTEGER DEFAULT 0;",
-                '2025_06_01_100000_add_is_paid_to_users' => "ALTER TABLE users ADD COLUMN is_paid INTEGER DEFAULT 0;"
             ];
 
             $pdo = get_db_connection();
@@ -367,18 +365,18 @@
         function get_user(): ?array {
             return $_SESSION["user"] ?? null;
         }
-        
+
     // Refreshes the current user's data from the database
         function refresh_user_data(): bool {
             if (!isset($_SESSION["user"]) || !isset($_SESSION["user"]["id"])) {
                 return false;
             }
-            
+
             $pdo = get_db_connection();
             $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
             $stmt->execute([$_SESSION["user"]["id"]]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($user) {
                 // Update session with fresh data from database
                 $_SESSION['user'] = [
@@ -394,10 +392,10 @@
                 ];
                 return true;
             }
-            
+
             return false;
         }
-        
+
     // Checks if the current user is a paid user
         function is_paid_user(): bool {
             $user = get_user();
@@ -550,34 +548,34 @@
         function set_current_business(int $business_id): bool {
             $business = get_business_by_id($business_id);
             $user = get_user();
-            
+
             if (!$business || !$user) {
                 return false;
             }
-            
+
             $pdo = get_db_connection();
-            
+
             try {
                 // Begin transaction
                 $pdo->beginTransaction();
-                
+
                 // First, reset all businesses for this user
                 $stmt = $pdo->prepare("UPDATE businesses SET is_current = 0 WHERE user_id = :user_id");
                 $stmt->execute([':user_id' => $user['id']]);
-                
+
                 // Then set the selected business as current
                 $stmt = $pdo->prepare("UPDATE businesses SET is_current = 1 WHERE id = :id AND user_id = :user_id");
                 $success = $stmt->execute([
                     ':id' => $business_id,
                     ':user_id' => $user['id']
                 ]);
-                
+
                 // Also store in session for backward compatibility during transition
                 $_SESSION['current_business'] = $business;
-                
+
                 // Commit transaction
                 $pdo->commit();
-                
+
                 return $success;
             } catch (PDOException $e) {
                 // Rollback transaction on error
@@ -589,23 +587,23 @@
     // Get current business from database
         function get_current_business(): ?array {
             $user = get_user();
-            
+
             if (!$user) {
                 return null;
             }
-            
+
             $pdo = get_db_connection();
-            
+
             try {
                 $stmt = $pdo->prepare("
                     SELECT * FROM businesses
                     WHERE user_id = :user_id AND is_current = 1 AND status = 'active'
                     LIMIT 1
                 ");
-                
+
                 $stmt->execute([':user_id' => $user['id']]);
                 $business = $stmt->fetch();
-                
+
                 return $business ?: null;
             } catch (PDOException $e) {
                 error_log("Failed to get current business: " . $e->getMessage());
@@ -616,20 +614,20 @@
     // Clear current business from database
         function clear_current_business(): bool {
             $user = get_user();
-            
+
             if (!$user) {
                 return false;
             }
-            
+
             $pdo = get_db_connection();
-            
+
             try {
                 $stmt = $pdo->prepare("UPDATE businesses SET is_current = 0 WHERE user_id = :user_id");
                 $success = $stmt->execute([':user_id' => $user['id']]);
-                
+
                 // Also clear from session for backward compatibility
                 unset($_SESSION['current_business']);
-                
+
                 return $success;
             } catch (PDOException $e) {
                 error_log("Failed to clear current business: " . $e->getMessage());
@@ -833,7 +831,7 @@
         $messages = [];
         $user = get_user();
         $pdo = get_db_connection();
-        
+
         // Initialize session messages array if not set
         if (!isset($_SESSION['messages'])) {
             $_SESSION['messages'] = [];
@@ -1051,7 +1049,7 @@
                                 ];
                                 $_SESSION['login_time'] = time();
                                 $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                                
+
                                 // No need to restore from cookie as current business is stored in database
                                 // The get_current_business() function will automatically fetch from database
 
@@ -1083,7 +1081,7 @@
     // Handle logout with comprehensive cleanup
         if (isset($_GET['logout']) || $path === 'logout') {
             // No need to save business ID to cookie as it's now stored in the database
-            
+
             // Clear all session data
             $_SESSION = array();
 
@@ -1098,11 +1096,11 @@
 
             // Clear any OAuth-related cookies
             $expire_time = time() - 3600; // Set expiration to the past
-            
+
             // Clear potential OAuth cookies
             setcookie('oauth_state', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
             setcookie('google_auth', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
-            
+
             // Destroy session
             session_destroy();
 
@@ -1151,20 +1149,20 @@
         }
     // Check if user is logged in
         $is_logged_in = is_logged_in();
-        
+
     // Refresh user data from database if logged in
         if ($is_logged_in) {
             refresh_user_data();
         }
-        
+
     // Protect dashboard pages
         if ($page_category === 'dashboard' && !$is_logged_in) {
             redirect('/');
         }
-        
+
     // Protect paid-only features
-        if (isset($route_categories[$page_category][$path]['paid_only']) && 
-            $route_categories[$page_category][$path]['paid_only'] === true && 
+        if (isset($route_categories[$page_category][$path]['paid_only']) &&
+            $route_categories[$page_category][$path]['paid_only'] === true &&
             !is_paid_user()) {
             // Set a message to inform the user why they were redirected
             $_SESSION['messages'][] = 'This feature is only available for paid users. Please upgrade your account to access it.';
@@ -2227,21 +2225,21 @@
                  display: inline-flex;
                  justify-content: center;
              }
-             
+
              /* Business info in sidebar styles */
              .business-info-sidebar {
                  padding: 0.75rem 1.5rem;
                  margin-bottom: 0.5rem;
                  border-bottom: 1px solid #e5e7eb;
              }
-             
+
              .business-info-sidebar h4 {
                  margin: 0 0 0.5rem 0;
                  color: #111827;
                  font-weight: 600;
                  font-size: 0.95rem;
              }
-             
+
              .business-info-sidebar .business-address {
                  font-size: 0.8rem;
                  color: #6b7280;
@@ -2250,13 +2248,13 @@
                  align-items: center;
                  gap: 0.5rem;
              }
-             
+
              .business-setup-sidebar {
                  padding: 0.75rem 1.5rem;
                  margin-bottom: 0.5rem;
                  border-bottom: 1px solid #e5e7eb;
              }
-             
+
              .business-setup-btn {
                  display: flex;
                  align-items: center;
@@ -2270,7 +2268,7 @@
                  text-decoration: none;
                  transition: all 0.2s ease;
              }
-             
+
              .business-setup-btn:hover {
                  background: #e5e7eb;
                  color: #2563eb;
@@ -2299,7 +2297,7 @@
                             <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
                         </a>
                 </div>
-                
+
                 <?php
                 // <business-info-sidebar>
                 $current_business = get_current_business();
@@ -2325,9 +2323,9 @@
 
 
                         <?php if (is_paid_user()): // Only show these menus for paid users ?>
-                        
+
                         <li class="nav-item"><a href="/business" class="nav-link <?= $current_page === 'business' ? 'active' : ''; ?>"><i class="fas fa-building"></i>Business</a></li>
-                        
+
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'teams' && 'customers' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-users"></i>Manajemen User</span>
@@ -2340,7 +2338,7 @@
                         </li>
 
                         <li class="nav-item"><a href="#" class="nav-link <?= $current_page === 'produk' ? 'active' : ''; ?>"><i class="fas fa-boxes-stacked"></i>Produk</a></li>
-                       
+
                         <li class="nav-item">
                             <a href="#" class="nav-link has-submenu <?= $current_page === 'plans' ? 'active' : ''; ?>">
                                 <span><i class="fas fa-store"></i>Stock Emas</span>
@@ -2419,7 +2417,7 @@
                         </li>
                         <?php endif; ?>
 
-                        
+
 
                     </ul>
                 </nav>
@@ -2450,13 +2448,13 @@
                 // Restore sidebar state on page load, but only if it's relevant to the current page
                 var openSubmenu = localStorage.getItem('openSubmenu');
                 var currentPage = '<?= $current_page ?>';
-                
+
                 if (openSubmenu) {
                     $('.nav-item').each(function() {
                         var $navItem = $(this);
                         var $link = $navItem.find('.nav-link.has-submenu');
                         var linkText = $link.find('span').text().trim();
-                        
+
                         // Check if this submenu contains the current page
                         var containsCurrentPage = false;
                         $navItem.find('.submenu .nav-link').each(function() {
@@ -2465,7 +2463,7 @@
                                 containsCurrentPage = true;
                             }
                         });
-                        
+
                         // Only open the submenu if it matches stored value AND contains current page
                         if (linkText === openSubmenu && containsCurrentPage) {
                             $navItem.addClass('open');
@@ -2493,7 +2491,7 @@
                 function isCurrentPageInSubmenu() {
                     var currentPage = '<?= $current_page ?>';
                     var found = false;
-                    
+
                     $('.submenu .nav-link').each(function() {
                         var href = $(this).attr('href');
                         if (href && href.includes(currentPage)) {
@@ -2501,16 +2499,16 @@
                             return false; // break the loop
                         }
                     });
-                    
+
                     return found;
                 }
-                
+
                 // Close all submenus if current page doesn't belong to any submenu
                 if (!isCurrentPageInSubmenu()) {
                     $('.nav-item.open').removeClass('open');
                     localStorage.removeItem('openSubmenu');
                 }
-                
+
                 // Submenu toggle functionality
                 $('.nav-link.has-submenu').click(function(e) {
                     e.preventDefault();
@@ -2542,7 +2540,7 @@
                     var $parentLink = $parentNavItem.find('.nav-link.has-submenu');
                     var parentLinkText = $parentLink.find('span').text().trim();
                     var clickedHref = $(this).attr('href');
-                    
+
                     // Only save state if this is a navigation within the same submenu section
                     if (clickedHref) {
                         localStorage.setItem('openSubmenu', parentLinkText);
@@ -2699,17 +2697,17 @@
                                 <p style="margin: 0.5rem 0;"><?= e($message) ?></p>
                             <?php endforeach; ?>
                         </div>
-                        <?php 
+                        <?php
                         // Clear messages after displaying them
                         $_SESSION['messages'] = [];
                         ?>
                     <?php endif; ?>
-                    
+
                     <div class="dashboard-header">
                         <h2>Welcome to Your Dashboard</h2>
                         <p>Manage your business and access available features.</p>
                     </div>
-                    
+
                     <?php if (!is_paid_user()): // Show upgrade banner for free users ?>
                     <div class="upgrade-banner" style="background: linear-gradient(135deg, #4a6cf7, #2541b2); color: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <h3 style="margin-top: 0; font-size: 1.5rem;">Upgrade to Paid Plan</h3>
@@ -2935,7 +2933,7 @@
 
                     <?php endif; ?>
 
-                    
+
 
             </div>
         <!--<Toko Page>-->
