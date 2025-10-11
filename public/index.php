@@ -1717,7 +1717,7 @@
                 top: 0;
                 left: 0;
                 right: 0;
-                z-index: 1000;
+                z-index: 9999;
                 height: 70px;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
@@ -1807,7 +1807,7 @@
                 padding: 0.5rem;
                 margin-top: 0.5rem;
                 list-style: none;
-                z-index: 1001;
+                z-index: 10000;
             }
 
             .nav-item:hover .submenu {
@@ -1913,6 +1913,11 @@
                 object-fit: cover;
             }
 
+            .user-avatar i {
+                font-size: 20px;
+                color: #6b7280;
+            }
+
             .user-info {
                 display: flex;
                 flex-direction: column;
@@ -1937,7 +1942,7 @@
                 min-width: 200px;
                 padding: 0.5rem;
                 margin-top: 0.5rem;
-                z-index: 1001;
+                z-index: 10001;
             }
 
             .user-dropdown.show {
@@ -2268,7 +2273,11 @@
 
                         <div class="user-profile" id="userProfile">
                             <div class="user-avatar">
-                                <img src="<?= e($user['picture'] ?? '/assets/images/default-avatar.png'); ?>" alt="User Avatar">
+                                <?php if (!empty($user['picture'])): ?>
+                                    <img src="<?= e($user['picture']); ?>" alt="User Avatar">
+                                <?php else: ?>
+                                    <i class="fas fa-user"></i>
+                                <?php endif; ?>
                             </div>
                             <div class="user-info">
                                 <div class="user-name"><?= e($user['name'] ?? 'Guest'); ?></div>
