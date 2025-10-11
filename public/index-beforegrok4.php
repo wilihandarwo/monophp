@@ -67,7 +67,11 @@
         ]);
     // Start session
         session_start();
-
+    // Clean up stale OAuth data on every page load (but not during OAuth callback)
+        if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300 && !isset($_GET['code'])) {
+            // OAuth state is older than 5 minutes, clear it (unless we're processing OAuth callback)
+            clear_oauth_session();
+        }
     // Clean up expired sessions
         if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
             // Session is older than 24 hours, clear user data
@@ -224,16 +228,26 @@
             $pdo = get_db_connection();
             $pdo->exec("CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    google_id VARCHAR(255) UNIQUE NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     email VARCHAR(255) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
                     picture TEXT,
                     role VARCHAR(255) DEFAULT 'user',
                     is_paid INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS businesses (
+            $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
+                    version TEXT UNIQUE NOT NULL,
+                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );");
+        }
+    // Runs pending database migrations to update the schema without data loss.
+        function run_migrations(): void {
+            $migrations = [
+                // Migrations can be added here in the future. Example:
+                // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+                '2025_01_14_100000_create_businesses_table' => "CREATE TABLE IF NOT EXISTS businesses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
                     name VARCHAR(255) NOT NULL,
@@ -248,17 +262,7 @@
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                );");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
-                    version TEXT UNIQUE NOT NULL,
-                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                );");
-        }
-    // Runs pending database migrations to update the schema without data loss.
-        function run_migrations(): void {
-            $migrations = [
-                // Migrations can be added here in the future. Example:
-                // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+                );",
             ];
 
             $pdo = get_db_connection();
@@ -317,6 +321,13 @@
 // </helpers>
 
 // <authentication>
+    // Clear stale OAuth sessions and data
+        function clear_oauth_session(): void {
+            $keys_to_clear = ['oauth_state', 'oauth_timestamp', 'google_auth_error', 'google_auth_url'];
+            foreach ($keys_to_clear as $key) {
+                unset($_SESSION[$key]);
+            }
+        }
     // Validate user session
         function is_valid_session(): bool {
             if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
@@ -337,6 +348,14 @@
             }
 
             return true;
+        }
+    // Initialize clean OAuth session
+        function init_oauth_session(): void {
+            // Clear any existing OAuth data
+            clear_oauth_session();
+
+            // Clear any error messages
+            unset($_SESSION['error']);
         }
     // Checks if a user is currently logged in.
         function is_logged_in(): bool {
@@ -362,6 +381,7 @@
                 // Update session with fresh data from database
                 $_SESSION['user'] = [
                     'id' => $user['id'],
+                    'google_id' => $user['google_id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'picture' => $user['picture'],
@@ -380,87 +400,6 @@
         function is_paid_user(): bool {
             $user = get_user();
             return ($user && isset($user['is_paid']) && $user['is_paid'] == 1);
-        }
-    // Hash password using PHP's password_hash
-        function hash_password(string $password): string {
-            return password_hash($password, PASSWORD_DEFAULT);
-        }
-    // Verify password against hash
-        function verify_password(string $password, string $hash): bool {
-            return password_verify($password, $hash);
-        }
-    // Register a new user
-        function register_user(string $name, string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Check if user already exists
-                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                if ($stmt->fetch()) {
-                    return null; // Email already exists
-                }
-
-                // Hash password and create user
-                $hashed_password = hash_password($password);
-                $stmt = $pdo->prepare('
-                    INSERT INTO users (name, email, password, role, is_paid)
-                    VALUES (?, ?, ?, ?, ?)
-                ');
-                $stmt->execute([$name, $email, $hashed_password, 'user', 0]);
-
-                $user_id = $pdo->lastInsertId();
-
-                // Return newly created user data
-                return [
-                    'id' => $user_id,
-                    'name' => $name,
-                    'email' => $email,
-                    'picture' => null,
-                    'role' => 'user',
-                    'is_paid' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in register_user: ' . $e->getMessage());
-                return null;
-            }
-        }
-    // Login user with email and password
-        function login_user(string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Get user by email
-                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$user) {
-                    return null; // User not found
-                }
-
-                // Verify password
-                if (!verify_password($password, $user['password'])) {
-                    return null; // Invalid password
-                }
-
-                // Return user data (without password)
-                return [
-                    'id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'picture' => $user['picture'],
-                    'role' => $user['role'] ?? 'user',
-                    'is_paid' => $user['is_paid'] ?? 0,
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at']
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in login_user: ' . $e->getMessage());
-                return null;
-            }
         }
 // </authentication>
 
@@ -697,6 +636,195 @@
         }
 // </business-management>
 
+// <google-oauth>
+    // Google OAuth - Configuration
+        function get_google_config(): array {
+            $site_domain = SITE_DOMAIN;
+            $is_development =
+                $site_domain === 'localhost' ||
+                $_SERVER["SERVER_NAME"] === "localhost" ||
+                $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+                $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+
+            $redirect_uri = $is_development
+                ? 'http://localhost:8000/auth/google/callback'
+                : getenv('GOOGLE_REDIRECT_URI');
+
+            return [
+                'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
+                'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
+                'redirect_uri' => $redirect_uri,
+                'scope' => 'openid email profile'
+            ];
+        }
+    // Google OAuth - Generate Google OAuth URL with state validation
+        function get_google_auth_url(): string {
+            $config = get_google_config();
+
+            // Generate and store state for CSRF protection
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['oauth_state'] = $state;
+            $_SESSION['oauth_timestamp'] = time();
+
+            $params = [
+                'client_id' => $config['client_id'],
+                'redirect_uri' => $config['redirect_uri'],
+                'scope' => $config['scope'],
+                'response_type' => 'code',
+                'access_type' => 'online',
+                'state' => $state,
+                'prompt' => 'select_account' // Force account selection to avoid cached sessions
+            ];
+
+            return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
+        }
+    // Google OAuth - Exchange authorization code for access token with error handling
+        function exchange_code_for_token(string $code): ?array {
+            $config = get_google_config();
+
+            $data = [
+                'client_id' => $config['client_id'],
+                'client_secret' => $config['client_secret'],
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $config['redirect_uri']
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log("Google OAuth token exchange cURL error: " . $curl_error);
+                return null;
+            }
+
+            if ($http_code === 200 && $response) {
+                $token_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($token_data['access_token'])) {
+                    return $token_data;
+                }
+                error_log("Google OAuth token exchange JSON decode error or missing access_token");
+            } else {
+                error_log("Google OAuth token exchange failed. HTTP Code: $http_code, Response: $response");
+            }
+
+            return null;
+        }
+    // Google OAuth - Get user information from Google with error handling
+        function get_google_user_info(string $access_token): ?array {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://www.googleapis.com/oauth2/v2/userinfo');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $access_token]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log("Google OAuth user info cURL error: " . $curl_error);
+                return null;
+            }
+
+            if ($http_code === 200 && $response) {
+                $user_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($user_data['email'])) {
+                    return $user_data;
+                }
+                error_log("Google OAuth user info JSON decode error or missing email");
+            } else {
+                error_log("Google OAuth user info failed. HTTP Code: $http_code, Response: $response");
+            }
+
+            return null;
+        }
+    // Google OAuth - Create or update user from Google data
+        function create_or_update_google_user(array $google_user): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                // Check if user exists
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
+                $stmt->execute([$google_user['id'], $google_user['email']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    // Update existing user
+                    $stmt = $pdo->prepare('
+                        UPDATE users
+                        SET google_id = ?, name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        $user['id']
+                    ]);
+
+                    // Return updated user data with role preserved
+                    return [
+                        'id' => $user['id'],
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => $user['role'] ?? 'user',
+                        'is_paid' => $user['is_paid'] ?? 0,
+                        'created_at' => $user['created_at'],
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                } else {
+                    // Create new user with default role
+                    $stmt = $pdo->prepare('
+                        INSERT INTO users (google_id, name, email, picture, role)
+                        VALUES (?, ?, ?, ?, ?)
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        'user'
+                    ]);
+
+                    $user_id = $pdo->lastInsertId();
+
+                    // Return newly created user data
+                    return [
+                        'id' => $user_id,
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => 'user',
+                        'is_paid' => 0,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                }
+            } catch (PDOException $e) {
+                error_log('Database error in create_or_update_google_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+// </google-oauth>
+
 // <view-initialization>
     // Initialization
         $errors = [];
@@ -711,83 +839,19 @@
 // </view-initialization>
 
 // <post-request-handling>
-    // Handle POST requests for authentication and business operations
+    // Handle POST requests for business operations
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Verify CSRF token on ALL POST requests
             if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
                 die('CSRF token validation failed. Request aborted.');
             }
 
-            $action = $_POST['action'] ?? '';
-
-            // Handle authentication actions (login/register)
-            if ($action === 'login' || $action === 'register') {
-                if ($action === 'register') {
-                    $name = trim($_POST['name'] ?? '');
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-                    $password_confirm = $_POST['password_confirm'] ?? '';
-
-                    // Validate inputs
-                    if (empty($name)) {
-                        $errors[] = 'Name is required.';
-                    } elseif (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $errors[] = 'Invalid email format.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
-                    } elseif (strlen($password) < 6) {
-                        $errors[] = 'Password must be at least 6 characters.';
-                    } elseif ($password !== $password_confirm) {
-                        $errors[] = 'Passwords do not match.';
-                    } else {
-                        // Register user
-                        $user = register_user($name, $email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Email already exists or registration failed.';
-                        }
-                    }
-                } elseif ($action === 'login') {
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-
-                    // Validate inputs
-                    if (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
-                    } else {
-                        // Login user
-                        $user = login_user($email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Invalid email or password.';
-                        }
-                    }
-                }
-            }
-            // Handle business operations (requires login)
-            elseif (!is_logged_in()) {
+            // Ensure user is logged in for business operations
+            if (!is_logged_in()) {
                 $errors[] = 'You must be logged in to perform this action.';
             } else {
+                $action = $_POST['action'] ?? '';
+
                 switch ($action) {
                     case 'create_business':
                         $business_data = [
@@ -913,7 +977,7 @@
         }
 // </post-request-handling>
 
-// <authentication-flow>
+// <oauth-flow>
     // File path
         $request_uri = $_SERVER['REQUEST_URI'];
         $path = parse_url($request_uri, PHP_URL_PATH);
@@ -925,8 +989,99 @@
             session_destroy();
             session_start();
         }
-    // Handle logout
+    // Handle OAuth state cleanup (manual trigger)
+        if (isset($_GET['clear_oauth'])) {
+            init_oauth_session();
+            header('Location: /');
+            exit;
+        }
+    // Handle Google OAuth callback
+        if (isset($_GET['code'])) {
+            $code = $_GET['code'];
+            $state = $_GET['state'] ?? '';
+            $error_param = $_GET['error'] ?? '';
+
+            // Handle OAuth errors
+            if ($error_param) {
+                error_log("Google OAuth error: " . $error_param);
+                $errors[] = 'Authentication was cancelled or failed. Please try again.';
+            }
+            // Validate state parameter for CSRF protection
+            elseif (empty($state) || !isset($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
+                error_log("Google OAuth state validation failed. Expected: " . ($_SESSION['oauth_state'] ?? 'none') . ", Got: " . $state);
+                $errors[] = 'Invalid authentication state. Please try again.';
+            }
+            // Check if state is not too old (5 minutes max)
+            elseif (!isset($_SESSION['oauth_timestamp']) || (time() - $_SESSION['oauth_timestamp']) > 300) {
+                error_log("Google OAuth state expired. Timestamp: " . ($_SESSION['oauth_timestamp'] ?? 'none'));
+                $errors[] = 'Authentication session expired. Please try again.';
+            }
+            else {
+                // Clear OAuth state from session
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+
+                try {
+                    // Exchange code for access token
+                    $token_info = exchange_code_for_token($code);
+
+                    if (isset($token_info['access_token'])) {
+                        // Get user info from Google
+                        $user_data = get_google_user_info($token_info['access_token']);
+
+                        if ($user_data && isset($user_data['email'])) {
+                            // Save user to database and store in session
+                            $db_user = create_or_update_google_user($user_data);
+
+                            if ($db_user) {
+                                // Regenerate session ID for security
+                                session_regenerate_id(true);
+
+                                $_SESSION['user'] = [
+                                    'id' => $db_user['id'],
+                                    'google_id' => $db_user['google_id'],
+                                    'name' => $db_user['name'],
+                                    'email' => $db_user['email'],
+                                    'picture' => $db_user['picture'],
+                                    'role' => $db_user['role'] ?? 'user',
+                                    'is_paid' => $db_user['is_paid'] ?? 0,
+                                    'created_at' => $db_user['created_at'],
+                                    'updated_at' => $db_user['updated_at']
+                                ];
+                                $_SESSION['login_time'] = time();
+                                $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+                                // No need to restore from cookie as current business is stored in database
+                                // The get_current_business() function will automatically fetch from database
+
+                                // Redirect to dashboard
+                                redirect('/dashboard');
+                            } else {
+                                error_log("Failed to create/update user in database for email: " . $user_data['email']);
+                                $errors[] = 'Failed to create user account. Please try again.';
+                            }
+                        } else {
+                            error_log("Failed to get user info from Google or missing email");
+                            $errors[] = 'Failed to retrieve user information from Google. Please try again.';
+                        }
+                    } else {
+                        error_log("Failed to exchange code for token");
+                        $errors[] = 'Failed to authenticate with Google. Please try again.';
+                    }
+                } catch (Exception $e) {
+                    error_log("Google OAuth exception: " . $e->getMessage());
+                    $errors[] = "Authentication failed. Please try again.";
+                }
+            }
+
+            // Clean up OAuth session data on any error
+            if (!empty($errors)) {
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+            }
+        }
+    // Handle logout with comprehensive cleanup
         if (isset($_GET['logout']) || $path === 'logout') {
+            // No need to save business ID to cookie as it's now stored in the database
+
             // Clear all session data
             $_SESSION = array();
 
@@ -939,6 +1094,13 @@
                 );
             }
 
+            // Clear any OAuth-related cookies
+            $expire_time = time() - 3600; // Set expiration to the past
+
+            // Clear potential OAuth cookies
+            setcookie('oauth_state', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+            setcookie('google_auth', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+
             // Destroy session
             session_destroy();
 
@@ -946,7 +1108,7 @@
             header('Location: /?t=' . time());
             exit;
         }
-// </authentication-flow>
+// </oauth-flow>
 
 // <routing>
     // Define routes grouped by category
@@ -967,6 +1129,7 @@
                 'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP', 'paid_only' => true]
             ],
             'other' => [
+                'auth/google/callback' => ['page' => 'oauth_callback', 'title' => 'MonoPHP', 'paid_only' => false],
                 'logout' => ['page' => 'logout', 'title' => 'MonoPHP', 'paid_only' => false]
             ]
         ];
@@ -1442,8 +1605,14 @@
                         <?php if ($is_logged_in): ?>
                             <a href="/dashboard" class="button">Dashboard</a>
                         <?php else: ?>
-                            <a href="#" onclick="document.getElementById('loginModal').style.display='block'; return false;" style="background: #4285f4; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 500;">
-                                Sign In
+                            <?php
+                                // Generate OAuth URL only if not already set in session
+                                if (!isset($_SESSION['google_auth_url']) || !isset($_SESSION['oauth_state'])) {
+                                    $_SESSION['google_auth_url'] = get_google_auth_url();
+                                }
+                            ?>
+                            <a href="<?= e($_SESSION['google_auth_url']); ?>">
+                                <img src="/assets/images/google_login.svg" alt="Google Logo" width="auto" height="46">
                             </a>
                         <?php endif; ?>
                     </div>
@@ -3138,122 +3307,6 @@
 <!-- </other-container>  -->
 
 <?php } ?>
-
-<!-- Login/Register Modal -->
-<div id="loginModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div style="background-color: #fefefe; margin: 5% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-        <!-- Modal Header -->
-        <div style="padding: 20px 30px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 24px; color: #333;" id="modalTitle">Sign In</h2>
-            <span onclick="document.getElementById('loginModal').style.display='none'" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
-        </div>
-        
-        <!-- Error/Success Messages -->
-        <?php if (!empty($errors)): ?>
-            <div style="background-color: #fee; border-left: 4px solid #f44; padding: 12px 30px; margin: 20px 30px 0; border-radius: 4px;">
-                <?php foreach ($errors as $error): ?>
-                    <p style="margin: 4px 0; color: #c33;"><?= e($error); ?></p>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-        
-        <!-- Modal Body -->
-        <div style="padding: 30px;">
-            <!-- Login Form -->
-            <form id="loginForm" method="POST" action="/" style="display: block;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="login">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Sign In
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Don't have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign Up</a>
-                </p>
-            </form>
-            
-            <!-- Register Form -->
-            <form id="registerForm" method="POST" action="/" style="display: none;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="register">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Name</label>
-                    <input type="text" name="name" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                    <small style="color: #888; font-size: 12px;">Minimum 6 characters</small>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Confirm Password</label>
-                    <input type="password" name="password_confirm" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Create Account
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Already have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign In</a>
-                </p>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-    function toggleForms() {
-        var loginForm = document.getElementById('loginForm');
-        var registerForm = document.getElementById('registerForm');
-        var modalTitle = document.getElementById('modalTitle');
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-            modalTitle.textContent = 'Sign In';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-            modalTitle.textContent = 'Create Account';
-        }
-    }
-    
-    // Close modal when clicking outside of it
-    window.onclick = function(event) {
-        var modal = document.getElementById('loginModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-    
-    // Show modal if there are errors
-    <?php if (!empty($errors) && !is_logged_in()): ?>
-        document.getElementById('loginModal').style.display = 'block';
-    <?php endif; ?>
-</script>
-
 </body>
 </html>
 <!--<EOF>-->

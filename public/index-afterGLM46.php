@@ -67,7 +67,11 @@
         ]);
     // Start session
         session_start();
-
+    // Clean up stale OAuth data on every page load (but not during OAuth callback)
+        if (isset($_SESSION['oauth_timestamp']) && (time() - $_SESSION['oauth_timestamp']) > 300 && !isset($_GET['code'])) {
+            // OAuth state is older than 5 minutes, clear it (unless we're processing OAuth callback)
+            clear_oauth_session();
+        }
     // Clean up expired sessions
         if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
             // Session is older than 24 hours, clear user data
@@ -224,9 +228,10 @@
             $pdo = get_db_connection();
             $pdo->exec("CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(255) NOT NULL,
+                    google_id VARCHAR(255) UNIQUE,
                     email VARCHAR(255) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
+                    password VARCHAR(255),
+                    name VARCHAR(255) NOT NULL,
                     picture TEXT,
                     role VARCHAR(255) DEFAULT 'user',
                     is_paid INTEGER DEFAULT 0,
@@ -317,6 +322,13 @@
 // </helpers>
 
 // <authentication>
+    // Clear stale OAuth sessions and data
+        function clear_oauth_session(): void {
+            $keys_to_clear = ['oauth_state', 'oauth_timestamp', 'google_auth_error', 'google_auth_url'];
+            foreach ($keys_to_clear as $key) {
+                unset($_SESSION[$key]);
+            }
+        }
     // Validate user session
         function is_valid_session(): bool {
             if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
@@ -337,6 +349,14 @@
             }
 
             return true;
+        }
+    // Initialize clean OAuth session
+        function init_oauth_session(): void {
+            // Clear any existing OAuth data
+            clear_oauth_session();
+
+            // Clear any error messages
+            unset($_SESSION['error']);
         }
     // Checks if a user is currently logged in.
         function is_logged_in(): bool {
@@ -362,6 +382,7 @@
                 // Update session with fresh data from database
                 $_SESSION['user'] = [
                     'id' => $user['id'],
+                    'google_id' => $user['google_id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'picture' => $user['picture'],
@@ -380,87 +401,6 @@
         function is_paid_user(): bool {
             $user = get_user();
             return ($user && isset($user['is_paid']) && $user['is_paid'] == 1);
-        }
-    // Hash password using PHP's password_hash
-        function hash_password(string $password): string {
-            return password_hash($password, PASSWORD_DEFAULT);
-        }
-    // Verify password against hash
-        function verify_password(string $password, string $hash): bool {
-            return password_verify($password, $hash);
-        }
-    // Register a new user
-        function register_user(string $name, string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Check if user already exists
-                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                if ($stmt->fetch()) {
-                    return null; // Email already exists
-                }
-
-                // Hash password and create user
-                $hashed_password = hash_password($password);
-                $stmt = $pdo->prepare('
-                    INSERT INTO users (name, email, password, role, is_paid)
-                    VALUES (?, ?, ?, ?, ?)
-                ');
-                $stmt->execute([$name, $email, $hashed_password, 'user', 0]);
-
-                $user_id = $pdo->lastInsertId();
-
-                // Return newly created user data
-                return [
-                    'id' => $user_id,
-                    'name' => $name,
-                    'email' => $email,
-                    'picture' => null,
-                    'role' => 'user',
-                    'is_paid' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in register_user: ' . $e->getMessage());
-                return null;
-            }
-        }
-    // Login user with email and password
-        function login_user(string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Get user by email
-                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$user) {
-                    return null; // User not found
-                }
-
-                // Verify password
-                if (!verify_password($password, $user['password'])) {
-                    return null; // Invalid password
-                }
-
-                // Return user data (without password)
-                return [
-                    'id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'picture' => $user['picture'],
-                    'role' => $user['role'] ?? 'user',
-                    'is_paid' => $user['is_paid'] ?? 0,
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at']
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in login_user: ' . $e->getMessage());
-                return null;
-            }
         }
 // </authentication>
 
@@ -697,6 +637,294 @@
         }
 // </business-management>
 
+// <google-oauth>
+    // Google OAuth - Configuration
+        function get_google_config(): array {
+            $site_domain = SITE_DOMAIN;
+            $is_development =
+                $site_domain === 'localhost' ||
+                $_SERVER["SERVER_NAME"] === "localhost" ||
+                $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+                $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+
+            $redirect_uri = $is_development
+                ? 'http://localhost:8000/auth/google/callback'
+                : getenv('GOOGLE_REDIRECT_URI');
+
+            return [
+                'client_id' => getenv('GOOGLE_CLIENT_ID') ?? '',
+                'client_secret' => getenv('GOOGLE_CLIENT_SECRET') ?? '',
+                'redirect_uri' => $redirect_uri,
+                'scope' => 'openid email profile'
+            ];
+        }
+    // Google OAuth - Generate Google OAuth URL with state validation
+        function get_google_auth_url(): string {
+            $config = get_google_config();
+
+            // Generate and store state for CSRF protection
+            $state = bin2hex(random_bytes(16));
+            $_SESSION['oauth_state'] = $state;
+            $_SESSION['oauth_timestamp'] = time();
+
+            $params = [
+                'client_id' => $config['client_id'],
+                'redirect_uri' => $config['redirect_uri'],
+                'scope' => $config['scope'],
+                'response_type' => 'code',
+                'access_type' => 'online',
+                'state' => $state,
+                'prompt' => 'select_account' // Force account selection to avoid cached sessions
+            ];
+
+            return 'https://accounts.google.com/o/oauth2/auth?' . http_build_query($params);
+        }
+    // Google OAuth - Exchange authorization code for access token with error handling
+        function exchange_code_for_token(string $code): ?array {
+            $config = get_google_config();
+
+            $data = [
+                'client_id' => $config['client_id'],
+                'client_secret' => $config['client_secret'],
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $config['redirect_uri']
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://oauth2.googleapis.com/token');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log("Google OAuth token exchange cURL error: " . $curl_error);
+                return null;
+            }
+
+            if ($http_code === 200 && $response) {
+                $token_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($token_data['access_token'])) {
+                    return $token_data;
+                }
+                error_log("Google OAuth token exchange JSON decode error or missing access_token");
+            } else {
+                error_log("Google OAuth token exchange failed. HTTP Code: $http_code, Response: $response");
+            }
+
+            return null;
+        }
+    // Google OAuth - Get user information from Google with error handling
+        function get_google_user_info(string $access_token): ?array {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://www.googleapis.com/oauth2/v2/userinfo');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $access_token]);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            curl_close($ch);
+
+            if ($curl_error) {
+                error_log("Google OAuth user info cURL error: " . $curl_error);
+                return null;
+            }
+
+            if ($http_code === 200 && $response) {
+                $user_data = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($user_data['email'])) {
+                    return $user_data;
+                }
+                error_log("Google OAuth user info JSON decode error or missing email");
+            } else {
+                error_log("Google OAuth user info failed. HTTP Code: $http_code, Response: $response");
+            }
+
+            return null;
+        }
+    // Google OAuth - Create or update user from Google data
+        function create_or_update_google_user(array $google_user): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                // Check if user exists
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE google_id = ? OR email = ?');
+                $stmt->execute([$google_user['id'], $google_user['email']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    // Update existing user
+                    $stmt = $pdo->prepare('
+                        UPDATE users
+                        SET google_id = ?, name = ?, email = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        $user['id']
+                    ]);
+
+                    // Return updated user data with role preserved
+                    return [
+                        'id' => $user['id'],
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => $user['role'] ?? 'user',
+                        'is_paid' => $user['is_paid'] ?? 0,
+                        'created_at' => $user['created_at'],
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                } else {
+                    // Create new user with default role
+                    $stmt = $pdo->prepare('
+                        INSERT INTO users (google_id, name, email, picture, role)
+                        VALUES (?, ?, ?, ?, ?)
+                    ');
+                    $stmt->execute([
+                        $google_user['id'],
+                        $google_user['name'],
+                        $google_user['email'],
+                        $google_user['picture'],
+                        'user'
+                    ]);
+
+                    $user_id = $pdo->lastInsertId();
+
+                    // Return newly created user data
+                    return [
+                        'id' => $user_id,
+                        'google_id' => $google_user['id'],
+                        'name' => $google_user['name'],
+                        'email' => $google_user['email'],
+                        'picture' => $google_user['picture'],
+                        'role' => 'user',
+                        'is_paid' => 0,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                }
+            } catch (PDOException $e) {
+                error_log('Database error in create_or_update_google_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+// </google-oauth>
+
+// Note: Google OAuth functions are kept for reference but no longer used
+// The application now uses email/password authentication
+
+// <email-password-auth>
+    // Hash password using bcrypt
+        function hash_password(string $password): string {
+            return password_hash($password, PASSWORD_DEFAULT);
+        }
+
+    // Verify password against hash
+        function verify_password(string $password, string $hash): bool {
+            return password_verify($password, $hash);
+        }
+
+    // Authenticate user with email and password
+        function authenticate_user(string $email, string $password): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user && verify_password($password, $user['password'])) {
+                    // Remove password from returned user data
+                    unset($user['password']);
+                    return $user;
+                }
+
+                return null;
+            } catch (PDOException $e) {
+                error_log('Database error in authenticate_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+
+    // Create new user with email and password
+        function create_user(string $name, string $email, string $password): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                // Check if user already exists
+                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+                $stmt->execute([$email]);
+                if ($stmt->fetch()) {
+                    return null; // User already exists
+                }
+
+                // Hash password
+                $password_hash = hash_password($password);
+
+                // Insert new user
+                $stmt = $pdo->prepare('
+                    INSERT INTO users (name, email, password, role)
+                    VALUES (?, ?, ?, ?)
+                ');
+                $stmt->execute([$name, $email, $password_hash, 'user']);
+
+                $user_id = $pdo->lastInsertId();
+
+                // Return newly created user data
+                return [
+                    'id' => $user_id,
+                    'name' => $name,
+                    'email' => $email,
+                    'role' => 'user',
+                    'is_paid' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+            } catch (PDOException $e) {
+                error_log('Database error in create_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+
+    // Get user by email
+        function get_user_by_email(string $email): ?array {
+            $pdo = get_db_connection();
+
+            try {
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    // Remove password from returned user data
+                    unset($user['password']);
+                    return $user;
+                }
+
+                return null;
+            } catch (PDOException $e) {
+                error_log('Database error in get_user_by_email: ' . $e->getMessage());
+                return null;
+            }
+        }
+// </email-password-auth>
+
 // <view-initialization>
     // Initialization
         $errors = [];
@@ -711,83 +939,19 @@
 // </view-initialization>
 
 // <post-request-handling>
-    // Handle POST requests for authentication and business operations
+    // Handle POST requests for business operations
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Verify CSRF token on ALL POST requests
             if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
                 die('CSRF token validation failed. Request aborted.');
             }
 
-            $action = $_POST['action'] ?? '';
-
-            // Handle authentication actions (login/register)
-            if ($action === 'login' || $action === 'register') {
-                if ($action === 'register') {
-                    $name = trim($_POST['name'] ?? '');
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-                    $password_confirm = $_POST['password_confirm'] ?? '';
-
-                    // Validate inputs
-                    if (empty($name)) {
-                        $errors[] = 'Name is required.';
-                    } elseif (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $errors[] = 'Invalid email format.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
-                    } elseif (strlen($password) < 6) {
-                        $errors[] = 'Password must be at least 6 characters.';
-                    } elseif ($password !== $password_confirm) {
-                        $errors[] = 'Passwords do not match.';
-                    } else {
-                        // Register user
-                        $user = register_user($name, $email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Email already exists or registration failed.';
-                        }
-                    }
-                } elseif ($action === 'login') {
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-
-                    // Validate inputs
-                    if (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
-                    } else {
-                        // Login user
-                        $user = login_user($email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Invalid email or password.';
-                        }
-                    }
-                }
-            }
-            // Handle business operations (requires login)
-            elseif (!is_logged_in()) {
+            // Ensure user is logged in for business operations
+            if (!is_logged_in()) {
                 $errors[] = 'You must be logged in to perform this action.';
             } else {
+                $action = $_POST['action'] ?? '';
+
                 switch ($action) {
                     case 'create_business':
                         $business_data = [
@@ -911,9 +1075,83 @@
             $redirect_url = $_POST['redirect_url'] ?? '/business';
             redirect($redirect_url);
         }
+
+        // Handle login POST request
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+            if ($_POST['action'] === 'login') {
+                $email = sanitize_input($_POST['email'] ?? '');
+                $password = $_POST['password'] ?? '';
+
+                if (empty($email) || empty($password)) {
+                    $errors[] = 'Email and password are required.';
+                } else {
+                    $user = authenticate_user($email, $password);
+                    if ($user) {
+                        // Regenerate session ID for security
+                        session_regenerate_id(true);
+
+                        $_SESSION['user'] = [
+                            'id' => $user['id'],
+                            'name' => $user['name'],
+                            'email' => $user['email'],
+                            'role' => $user['role'] ?? 'user',
+                            'is_paid' => $user['is_paid'] ?? 0,
+                            'created_at' => $user['created_at'],
+                            'updated_at' => $user['updated_at']
+                        ];
+                        $_SESSION['login_time'] = time();
+                        $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+                        redirect('/dashboard');
+                    } else {
+                        $errors[] = 'Invalid email or password.';
+                    }
+                }
+            }
+
+            // Handle register POST request
+            if ($_POST['action'] === 'register') {
+                $name = sanitize_input($_POST['name'] ?? '');
+                $email = sanitize_input($_POST['email'] ?? '');
+                $password = $_POST['password'] ?? '';
+                $confirm_password = $_POST['confirm_password'] ?? '';
+
+                if (empty($name) || empty($email) || empty($password)) {
+                    $errors[] = 'All fields are required.';
+                } elseif (strlen($password) < 8) {
+                    $errors[] = 'Password must be at least 8 characters long.';
+                } elseif ($password !== $confirm_password) {
+                    $errors[] = 'Passwords do not match.';
+                } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $errors[] = 'Please enter a valid email address.';
+                } else {
+                    $user = create_user($name, $email, $password);
+                    if ($user) {
+                        // Regenerate session ID for security
+                        session_regenerate_id(true);
+
+                        $_SESSION['user'] = [
+                            'id' => $user['id'],
+                            'name' => $user['name'],
+                            'email' => $user['email'],
+                            'role' => $user['role'] ?? 'user',
+                            'is_paid' => $user['is_paid'] ?? 0,
+                            'created_at' => $user['created_at'],
+                            'updated_at' => $user['updated_at']
+                        ];
+                        $_SESSION['login_time'] = time();
+                        $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+                        redirect('/dashboard');
+                    } else {
+                        $errors[] = 'Email already exists or registration failed. Please try again.';
+                    }
+                }
+            }
+        }
 // </post-request-handling>
 
-// <authentication-flow>
+// <oauth-flow>
     // File path
         $request_uri = $_SERVER['REQUEST_URI'];
         $path = parse_url($request_uri, PHP_URL_PATH);
@@ -925,7 +1163,13 @@
             session_destroy();
             session_start();
         }
-    // Handle logout
+    // Handle Google OAuth callback - Redirect to login
+        if (isset($_GET['code'])) {
+            // Google OAuth is no longer supported, redirect to login
+            redirect('/login');
+            exit;
+        }
+    // Handle logout with comprehensive cleanup
         if (isset($_GET['logout']) || $path === 'logout') {
             // Clear all session data
             $_SESSION = array();
@@ -942,11 +1186,11 @@
             // Destroy session
             session_destroy();
 
-            // Redirect with cache busting
-            header('Location: /?t=' . time());
+            // Redirect to login
+            redirect('/login');
             exit;
         }
-// </authentication-flow>
+// </oauth-flow>
 
 // <routing>
     // Define routes grouped by category
@@ -957,7 +1201,9 @@
                 '' => ['page' => 'home', 'title' => 'MonoPHP', 'paid_only' => false],
                 'home' => ['page' => 'home', 'title' => 'MonoPHP', 'paid_only' => false],
                 'about' => ['page' => 'about', 'title' => 'About - MonoPHP', 'paid_only' => false],
-                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP', 'paid_only' => false]
+                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP', 'paid_only' => false],
+                'login' => ['page' => 'login', 'title' => 'Login - MonoPHP', 'paid_only' => false],
+                'register' => ['page' => 'register', 'title' => 'Register - MonoPHP', 'paid_only' => false]
             ],
             'dashboard' => [
                 'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP', 'paid_only' => false],
@@ -1003,6 +1249,15 @@
             !is_paid_user()) {
             // Set a message to inform the user why they were redirected
             $_SESSION['messages'][] = 'This feature is only available for paid users. Please upgrade your account to access it.';
+            redirect('/dashboard');
+        }
+    // Protect authenticated routes
+        $auth_pages = ['dashboard'];
+        if (in_array($current_page, $auth_pages) && !$is_logged_in) {
+            redirect('/login');
+        }
+    // Redirect logged-in users from login/register to dashboard
+        if (($current_page === 'login' || $current_page === 'register') && $is_logged_in) {
             redirect('/dashboard');
         }
     // Set user data for dashboard pages
@@ -1442,9 +1697,8 @@
                         <?php if ($is_logged_in): ?>
                             <a href="/dashboard" class="button">Dashboard</a>
                         <?php else: ?>
-                            <a href="#" onclick="document.getElementById('loginModal').style.display='block'; return false;" style="background: #4285f4; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 500;">
-                                Sign In
-                            </a>
+                            <a href="/login" class="button">Login</a>
+                            <a href="/register" class="button" style="background: #B88400; color: white;">Register</a>
                         <?php endif; ?>
                     </div>
                 </nav>
@@ -1654,8 +1908,8 @@
                             <a href="/register" class="hero-cta-primary">
                                 Daftar Sekarang
                             </a>
-                            <a href="/about" class="hero-cta-secondary">
-                                Lihat Demo
+                            <a href="/login" class="hero-cta-secondary">
+                                Login
                             </a>
                         </div>
                         <!-- Trusted By Section -->
@@ -1691,6 +1945,137 @@
                 <section class="content">
                     <h2>Contact Us</h2>
                     <p>Have questions about MonoPHP? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
+                </section>
+        <!--Login Page-->
+            <?php break; case 'login': ?>
+            <!--Login section-->
+                <style>
+                .content {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 2rem;
+                }
+                .content h1 {
+                    font-size: 2rem;
+                    margin-bottom: 1rem;
+                    color: #333;
+                }
+                .content p {
+                    margin-bottom: 1rem;
+                    color: #666;
+                }
+                </style>
+                <section class="content">
+                    <div style="max-width: 400px; margin: 0 auto; padding: 2rem;">
+                        <h1>Login</h1>
+                        <p style="margin-bottom: 2rem;">Sign in to your account to continue.</p>
+
+                        <?php if (!empty($errors)): ?>
+                            <div style="background: #fee; border: 1px solid #fcc; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                                <?php foreach ($errors as $error): ?>
+                                    <p style="margin: 0; color: #c33;"><?php echo e($error); ?></p>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="POST" action="" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="login">
+
+                            <div>
+                                <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Email</label>
+                                <input type="email" id="email" name="email" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+
+                            <div>
+                                <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Password</label>
+                                <input type="password" id="password" name="password" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+
+                            <button type="submit"
+                                    style="background: #B88400; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600;">
+                                Login
+                            </button>
+                        </form>
+
+                        <p style="margin-top: 2rem; text-align: center;">
+                            Don't have an account? <a href="/register" style="color: #B88400;">Sign up here</a>
+                        </p>
+                    </div>
+                </section>
+        <!--Register Page-->
+            <?php break; case 'register': ?>
+            <!--Register section-->
+                <style>
+                .content {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 2rem;
+                }
+                .content h1 {
+                    font-size: 2rem;
+                    margin-bottom: 1rem;
+                    color: #333;
+                }
+                .content p {
+                    margin-bottom: 1rem;
+                    color: #666;
+                }
+                </style>
+                <section class="content">
+                    <div style="max-width: 400px; margin: 0 auto; padding: 2rem;">
+                        <h1>Register</h1>
+                        <p style="margin-bottom: 2rem;">Create your account to get started.</p>
+
+                        <?php if (!empty($errors)): ?>
+                            <div style="background: #fee; border: 1px solid #fcc; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                                <?php foreach ($errors as $error): ?>
+                                    <p style="margin: 0; color: #c33;"><?php echo e($error); ?></p>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="POST" action="" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="register">
+
+                            <div>
+                                <label for="name" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Name</label>
+                                <input type="text" id="name" name="name" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+
+                            <div>
+                                <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Email</label>
+                                <input type="email" id="email" name="email" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+
+                            <div>
+                                <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Password</label>
+                                <input type="password" id="password" name="password" required minlength="8"
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                                <small style="color: #666; font-size: 0.875rem;">Minimum 8 characters</small>
+                            </div>
+
+                            <div>
+                                <label for="confirm_password" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Confirm Password</label>
+                                <input type="password" id="confirm_password" name="confirm_password" required
+                                       style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                            </div>
+
+                            <button type="submit"
+                                    style="background: #B88400; color: white; padding: 0.75rem 2rem; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; font-weight: 600;">
+                                Register
+                            </button>
+                        </form>
+
+                        <p style="margin-top: 2rem; text-align: center;">
+                            Already have an account? <a href="/login" style="color: #B88400;">Login here</a>
+                        </p>
+                    </div>
                 </section>
         <!--404 Page-->
             <?php break; default:?>
@@ -3138,122 +3523,6 @@
 <!-- </other-container>  -->
 
 <?php } ?>
-
-<!-- Login/Register Modal -->
-<div id="loginModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div style="background-color: #fefefe; margin: 5% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-        <!-- Modal Header -->
-        <div style="padding: 20px 30px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 24px; color: #333;" id="modalTitle">Sign In</h2>
-            <span onclick="document.getElementById('loginModal').style.display='none'" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
-        </div>
-        
-        <!-- Error/Success Messages -->
-        <?php if (!empty($errors)): ?>
-            <div style="background-color: #fee; border-left: 4px solid #f44; padding: 12px 30px; margin: 20px 30px 0; border-radius: 4px;">
-                <?php foreach ($errors as $error): ?>
-                    <p style="margin: 4px 0; color: #c33;"><?= e($error); ?></p>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-        
-        <!-- Modal Body -->
-        <div style="padding: 30px;">
-            <!-- Login Form -->
-            <form id="loginForm" method="POST" action="/" style="display: block;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="login">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Sign In
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Don't have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign Up</a>
-                </p>
-            </form>
-            
-            <!-- Register Form -->
-            <form id="registerForm" method="POST" action="/" style="display: none;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="register">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Name</label>
-                    <input type="text" name="name" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                    <small style="color: #888; font-size: 12px;">Minimum 6 characters</small>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Confirm Password</label>
-                    <input type="password" name="password_confirm" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Create Account
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Already have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign In</a>
-                </p>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-    function toggleForms() {
-        var loginForm = document.getElementById('loginForm');
-        var registerForm = document.getElementById('registerForm');
-        var modalTitle = document.getElementById('modalTitle');
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-            modalTitle.textContent = 'Sign In';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-            modalTitle.textContent = 'Create Account';
-        }
-    }
-    
-    // Close modal when clicking outside of it
-    window.onclick = function(event) {
-        var modal = document.getElementById('loginModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-    
-    // Show modal if there are errors
-    <?php if (!empty($errors) && !is_logged_in()): ?>
-        document.getElementById('loginModal').style.display = 'block';
-    <?php endif; ?>
-</script>
-
 </body>
 </html>
 <!--<EOF>-->

@@ -67,7 +67,6 @@
         ]);
     // Start session
         session_start();
-
     // Clean up expired sessions
         if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > 86400) {
             // Session is older than 24 hours, clear user data
@@ -224,14 +223,16 @@
             $pdo = get_db_connection();
             $pdo->exec("CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    google_id VARCHAR(255),
                     name VARCHAR(255) NOT NULL,
                     email VARCHAR(255) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
+                    password TEXT,
                     picture TEXT,
                     role VARCHAR(255) DEFAULT 'user',
                     is_paid INTEGER DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(google_id)
                 );");
             $pdo->exec("CREATE TABLE IF NOT EXISTS businesses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,9 +258,9 @@
     // Runs pending database migrations to update the schema without data loss.
         function run_migrations(): void {
             $migrations = [
-                // Migrations can be added here in the future. Example:
-                // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
-            ];
+                    // Migrations can be added here in the future. Example:
+                    // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+                ];
 
             $pdo = get_db_connection();
             $applied_migrations = $pdo
@@ -317,31 +318,61 @@
 // </helpers>
 
 // <authentication>
-    // Validate user session
-        function is_valid_session(): bool {
-            if (!isset($_SESSION['user']) || !isset($_SESSION['login_time'])) {
-                return false;
-            }
-
-            // Check if session is too old (24 hours)
-            if ((time() - $_SESSION['login_time']) > 86400) {
-                return false;
-            }
-
-            // Check if IP changed (optional security measure)
-            $current_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-            if (isset($_SESSION['login_ip']) && $_SESSION['login_ip'] !== $current_ip) {
-                error_log("Session IP mismatch. Original: " . $_SESSION['login_ip'] . ", Current: " . $current_ip);
-                // Uncomment the next line if you want strict IP validation
-                // return false;
-            }
-
-            return true;
+// <authentication>
+    // Hashes a password using PHP's built-in function
+        function hash_password(string $password): string {
+            return password_hash($password, PASSWORD_DEFAULT);
         }
+
+    // Verifies a password against its hash
+        function verify_password(string $password, string $hash): bool {
+            return password_verify($password, $hash);
+        }
+
+    // Creates a new local user with hashed password
+        function create_local_user(string $name, string $email, string $password): ?int {
+            $pdo = get_db_connection();
+            try {
+                $hashed_password = hash_password($password);
+                $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
+                $stmt->execute([$name, $email, $hashed_password, 'user']);
+                return (int) $pdo->lastInsertId();
+            } catch (PDOException $e) {
+                error_log('Database error in create_local_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+
+    // Authenticates a user by email and password
+        function authenticate_user(string $email, string $password): ?array {
+            $pdo = get_db_connection();
+            try {
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ? AND password IS NOT NULL');
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($user && !empty($user['password']) && verify_password($password, $user['password'])) {
+                    return $user;
+                }
+                return null;
+            } catch (PDOException $e) {
+                error_log('Database error in authenticate_user: ' . $e->getMessage());
+                return null;
+            }
+        }
+
+    // Logs out the current user
+        function logout_user(): void {
+            if (isset($_SESSION['user'])) {
+                unset($_SESSION['user'], $_SESSION['login_time'], $_SESSION['login_ip']);
+            }
+            session_regenerate_id(true);
+        }
+
     // Checks if a user is currently logged in.
         function is_logged_in(): bool {
             return isset($_SESSION["user"]);
         }
+
     // Gets the current user's data from the session.
         function get_user(): ?array {
             return $_SESSION["user"] ?? null;
@@ -364,7 +395,7 @@
                     'id' => $user['id'],
                     'name' => $user['name'],
                     'email' => $user['email'],
-                    'picture' => $user['picture'],
+                    'picture' => $user['picture'] ?? null,
                     'role' => $user['role'] ?? 'user',
                     'is_paid' => $user['is_paid'] ?? 0,
                     'created_at' => $user['created_at'],
@@ -379,89 +410,9 @@
     // Checks if the current user is a paid user
         function is_paid_user(): bool {
             $user = get_user();
-            return ($user && isset($user['is_paid']) && $user['is_paid'] == 1);
+            return $user ? ($user['is_paid'] ?? 0) === 1 : false;
         }
-    // Hash password using PHP's password_hash
-        function hash_password(string $password): string {
-            return password_hash($password, PASSWORD_DEFAULT);
-        }
-    // Verify password against hash
-        function verify_password(string $password, string $hash): bool {
-            return password_verify($password, $hash);
-        }
-    // Register a new user
-        function register_user(string $name, string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Check if user already exists
-                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                if ($stmt->fetch()) {
-                    return null; // Email already exists
-                }
-
-                // Hash password and create user
-                $hashed_password = hash_password($password);
-                $stmt = $pdo->prepare('
-                    INSERT INTO users (name, email, password, role, is_paid)
-                    VALUES (?, ?, ?, ?, ?)
-                ');
-                $stmt->execute([$name, $email, $hashed_password, 'user', 0]);
-
-                $user_id = $pdo->lastInsertId();
-
-                // Return newly created user data
-                return [
-                    'id' => $user_id,
-                    'name' => $name,
-                    'email' => $email,
-                    'picture' => null,
-                    'role' => 'user',
-                    'is_paid' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in register_user: ' . $e->getMessage());
-                return null;
-            }
-        }
-    // Login user with email and password
-        function login_user(string $email, string $password): ?array {
-            $pdo = get_db_connection();
-
-            try {
-                // Get user by email
-                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
-                $stmt->execute([$email]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$user) {
-                    return null; // User not found
-                }
-
-                // Verify password
-                if (!verify_password($password, $user['password'])) {
-                    return null; // Invalid password
-                }
-
-                // Return user data (without password)
-                return [
-                    'id' => $user['id'],
-                    'name' => $user['name'],
-                    'email' => $user['email'],
-                    'picture' => $user['picture'],
-                    'role' => $user['role'] ?? 'user',
-                    'is_paid' => $user['is_paid'] ?? 0,
-                    'created_at' => $user['created_at'],
-                    'updated_at' => $user['updated_at']
-                ];
-            } catch (PDOException $e) {
-                error_log('Database error in login_user: ' . $e->getMessage());
-                return null;
-            }
-        }
+// </authentication>
 // </authentication>
 
 // <business-management>
@@ -697,6 +648,8 @@
         }
 // </business-management>
 
+
+
 // <view-initialization>
     // Initialization
         $errors = [];
@@ -710,223 +663,308 @@
         }
 // </view-initialization>
 
+// Handle logout
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    logout_user();
+    $messages[] = 'You have been logged out successfully.';
+    redirect('/');
+}
+
 // <post-request-handling>
-    // Handle POST requests for authentication and business operations
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Verify CSRF token on ALL POST requests
-            if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
-                die('CSRF token validation failed. Request aborted.');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Verify CSRF token on ALL POST requests
+        if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
+            die('CSRF token validation failed. Request aborted.');
+        }
+
+        $action = $_POST['action'] ?? '';
+
+        if ($action === 'login') {
+            $email = sanitize_input($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            if (empty($email) || empty($password)) {
+                $errors[] = 'Email and password are required.';
+            } else {
+                $db_user = authenticate_user($email, $password);
+                if ($db_user) {
+                    $_SESSION['user'] = [
+                        'id' => $db_user['id'],
+                        'name' => $db_user['name'],
+                        'email' => $db_user['email'],
+                        'picture' => $db_user['picture'],
+                        'role' => $db_user['role'] ?? 'user',
+                        'is_paid' => $db_user['is_paid'] ?? 0,
+                        'created_at' => $db_user['created_at'],
+                        'updated_at' => $db_user['updated_at']
+                    ];
+                    $_SESSION['login_time'] = time();
+                    $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? '';
+                    $messages[] = 'Welcome back!';
+                    redirect('/dashboard');
+                } else {
+                    $errors[] = 'Invalid email or password.';
+                }
             }
-
-            $action = $_POST['action'] ?? '';
-
-            // Handle authentication actions (login/register)
-            if ($action === 'login' || $action === 'register') {
-                if ($action === 'register') {
-                    $name = trim($_POST['name'] ?? '');
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-                    $password_confirm = $_POST['password_confirm'] ?? '';
-
-                    // Validate inputs
-                    if (empty($name)) {
-                        $errors[] = 'Name is required.';
-                    } elseif (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $errors[] = 'Invalid email format.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
-                    } elseif (strlen($password) < 6) {
-                        $errors[] = 'Password must be at least 6 characters.';
-                    } elseif ($password !== $password_confirm) {
-                        $errors[] = 'Passwords do not match.';
-                    } else {
-                        // Register user
-                        $user = register_user($name, $email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
+        } elseif ($action === 'register') {
+            $name = sanitize_input($_POST['name'] ?? '');
+            $email = sanitize_input($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            if (empty($name) || empty($email) || empty($password)) {
+                $errors[] = 'Name, email, and password are required.';
+            } elseif (strlen($password) < 6) {
+                $errors[] = 'Password must be at least 6 characters long.';
+            } else {
+                $pdo = get_db_connection();
+                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+                $stmt->execute([$email]);
+                if ($stmt->fetch()) {
+                    $errors[] = 'An account with this email already exists.';
+                } else {
+                    $user_id = create_local_user($name, $email, $password);
+                    if ($user_id) {
+                        $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+                        $stmt->execute([$user_id]);
+                        $db_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                        if ($db_user) {
+                            $_SESSION['user'] = [
+                                'id' => $db_user['id'],
+                                'name' => $db_user['name'],
+                                'email' => $db_user['email'],
+                                'picture' => $db_user['picture'],
+                                'role' => $db_user['role'] ?? 'user',
+                                'is_paid' => $db_user['is_paid'] ?? 0,
+                                'created_at' => $db_user['created_at'],
+                                'updated_at' => $db_user['updated_at']
+                            ];
                             $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Email already exists or registration failed.';
+                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? '';
                         }
-                    }
-                } elseif ($action === 'login') {
-                    $email = trim($_POST['email'] ?? '');
-                    $password = $_POST['password'] ?? '';
-
-                    // Validate inputs
-                    if (empty($email)) {
-                        $errors[] = 'Email is required.';
-                    } elseif (empty($password)) {
-                        $errors[] = 'Password is required.';
+                        $messages[] = 'Registration successful! Welcome.';
+                        redirect('/dashboard');
                     } else {
-                        // Login user
-                        $user = login_user($email, $password);
-                        if ($user) {
-                            // Regenerate session ID for security
-                            session_regenerate_id(true);
-
-                            $_SESSION['user'] = $user;
-                            $_SESSION['login_time'] = time();
-                            $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-                            redirect('/dashboard');
-                        } else {
-                            $errors[] = 'Invalid email or password.';
-                        }
+                        $errors[] = 'Registration failed. Please try again.';
                     }
                 }
             }
-            // Handle business operations (requires login)
-            elseif (!is_logged_in()) {
-                $errors[] = 'You must be logged in to perform this action.';
-            } else {
-                switch ($action) {
-                    case 'create_business':
-                        $business_data = [
-                            'name' => trim($_POST['name'] ?? ''),
-                            'description' => trim($_POST['description'] ?? ''),
-                            'address' => trim($_POST['address'] ?? ''),
-                            'phone' => trim($_POST['phone'] ?? ''),
-                            'email' => trim($_POST['email'] ?? ''),
-                            'website' => trim($_POST['website'] ?? ''),
-                            'logo_url' => trim($_POST['logo_url'] ?? '')
-                        ];
+        } elseif (!is_logged_in()) {
+            $errors[] = 'You must be logged in to perform this action.';
+        } else {
+            // Handle business operations
+            switch ($action) {
+                case 'create_business':
+                    $business_data = [
+                        'name' => trim($_POST['name'] ?? ''),
+                        'description' => trim($_POST['description'] ?? ''),
+                        'address' => trim($_POST['address'] ?? ''),
+                        'phone' => trim($_POST['phone'] ?? ''),
+                        'email' => trim($_POST['email'] ?? ''),
+                        'website' => trim($_POST['website'] ?? ''),
+                        'logo_url' => trim($_POST['logo_url'] ?? '')
+                    ];
 
-                        // Validate required fields
-                        if (empty($business_data['name'])) {
-                            $errors[] = 'Business name is required.';
-                        } elseif (strlen($business_data['name']) > 255) {
-                            $errors[] = 'Business name must be less than 255 characters.';
+                    // Validate required fields
+                    if (empty($business_data['name'])) {
+                        $errors[] = 'Business name is required.';
+                    } elseif (strlen($business_data['name']) > 255) {
+                        $errors[] = 'Business name must be less than 255 characters.';
+                    } else {
+                        $business_id = create_business($business_data);
+                        if ($business_id) {
+                            $messages[] = 'Business created successfully!';
+                            // Set as current business if it's the first one
+                            $user_businesses = get_user_businesses();
+                            if (count($user_businesses) === 1) {
+                                set_current_business($business_id);
+                            }
                         } else {
-                            $business_id = create_business($business_data);
-                            if ($business_id) {
-                                $messages[] = 'Business created successfully!';
-                                // Set as current business if it's the first one
-                                $user_businesses = get_user_businesses();
-                                if (count($user_businesses) === 1) {
+                            $errors[] = 'Failed to create business. Please try again.';
+                        }
+                    }
+                    break;
+
+                case 'update_business':
+                    $business_id = (int) ($_POST['business_id'] ?? 0);
+                    $business_data = [
+                        'name' => trim($_POST['name'] ?? ''),
+                        'description' => trim($_POST['description'] ?? ''),
+                        'address' => trim($_POST['address'] ?? ''),
+                        'phone' => trim($_POST['phone'] ?? ''),
+                        'email' => trim($_POST['email'] ?? ''),
+                        'website' => trim($_POST['website'] ?? ''),
+                        'logo_url' => trim($_POST['logo_url'] ?? '')
+                    ];
+
+                    // Validate required fields
+                    if ($business_id <= 0) {
+                        $errors[] = 'Invalid business ID.';
+                    } elseif (empty($business_data['name'])) {
+                        $errors[] = 'Business name is required.';
+                    } elseif (strlen($business_data['name']) > 255) {
+                        $errors[] = 'Business name must be less than 255 characters.';
+                    } else {
+                        // Check if business exists and belongs to user
+                        $existing_business = get_business_by_id($business_id);
+                        if (!$existing_business) {
+                            $errors[] = 'Business not found or access denied.';
+                        } else {
+                            $success = update_business($business_id, $business_data);
+                            if ($success) {
+                                $messages[] = 'Business updated successfully!';
+                                // Update current business in session if it's the active one
+                                $current_business = get_current_business();
+                                if ($current_business && $current_business['id'] == $business_id) {
                                     set_current_business($business_id);
                                 }
                             } else {
-                                $errors[] = 'Failed to create business. Please try again.';
+                                $errors[] = 'Failed to update business. Please try again.';
                             }
                         }
-                        break;
+                    }
+                    break;
 
-                    case 'update_business':
-                        $business_id = (int) ($_POST['business_id'] ?? 0);
-                        $business_data = [
-                            'name' => trim($_POST['name'] ?? ''),
-                            'description' => trim($_POST['description'] ?? ''),
-                            'address' => trim($_POST['address'] ?? ''),
-                            'phone' => trim($_POST['phone'] ?? ''),
-                            'email' => trim($_POST['email'] ?? ''),
-                            'website' => trim($_POST['website'] ?? ''),
-                            'logo_url' => trim($_POST['logo_url'] ?? '')
-                        ];
+                case 'delete_business':
+                    $business_id = (int) ($_POST['business_id'] ?? 0);
 
-                        // Validate required fields
-                        if ($business_id <= 0) {
-                            $errors[] = 'Invalid business ID.';
-                        } elseif (empty($business_data['name'])) {
-                            $errors[] = 'Business name is required.';
-                        } elseif (strlen($business_data['name']) > 255) {
-                            $errors[] = 'Business name must be less than 255 characters.';
+                    if ($business_id <= 0) {
+                        $errors[] = 'Invalid business ID.';
+                    } else {
+                        // Check if business exists and belongs to user
+                        $existing_business = get_business_by_id($business_id);
+                        if (!$existing_business) {
+                            $errors[] = 'Business not found or access denied.';
                         } else {
-                            // Check if business exists and belongs to user
-                            $existing_business = get_business_by_id($business_id);
-                            if (!$existing_business) {
-                                $errors[] = 'Business not found or access denied.';
-                            } else {
-                                $success = update_business($business_id, $business_data);
-                                if ($success) {
-                                    $messages[] = 'Business updated successfully!';
-                                    // Update current business in session if it's the active one
-                                    $current_business = get_current_business();
-                                    if ($current_business && $current_business['id'] == $business_id) {
-                                        set_current_business($business_id);
-                                    }
-                                } else {
-                                    $errors[] = 'Failed to update business. Please try again.';
-                                }
-                            }
-                        }
-                        break;
-
-                    case 'delete_business':
-                        $business_id = (int) ($_POST['business_id'] ?? 0);
-
-                        if ($business_id <= 0) {
-                            $errors[] = 'Invalid business ID.';
-                        } else {
-                            // Check if business exists and belongs to user
-                            $existing_business = get_business_by_id($business_id);
-                            if (!$existing_business) {
-                                $errors[] = 'Business not found or access denied.';
-                            } else {
-                                $success = delete_business($business_id);
-                                if ($success) {
-                                    $messages[] = 'Business deleted successfully!';
-                                    // Clear current business if it was the deleted one
-                                    $current_business = get_current_business();
-                                    if ($current_business && $current_business['id'] == $business_id) {
-                                        clear_current_business();
-                                    }
-                                } else {
-                                    $errors[] = 'Failed to delete business. Please try again.';
-                                }
-                            }
-                        }
-                        break;
-
-                    case 'set_current_business':
-                        $business_id = (int) ($_POST['business_id'] ?? 0);
-
-                        if ($business_id <= 0) {
-                            $errors[] = 'Invalid business ID.';
-                        } else {
-                            $success = set_current_business($business_id);
+                            $success = delete_business($business_id);
                             if ($success) {
-                                $messages[] = 'Business switched successfully!';
+                                $messages[] = 'Business deleted successfully!';
+                                // Clear current business if it was the deleted one
+                                $current_business = get_current_business();
+                                if ($current_business && $current_business['id'] == $business_id) {
+                                    clear_current_business();
+                                }
                             } else {
-                                $errors[] = 'Failed to switch business. Business not found or access denied.';
+                                $errors[] = 'Failed to delete business. Please try again.';
                             }
                         }
-                        break;
+                    }
+                    break;
 
-                    default:
-                        $errors[] = 'Invalid action specified.';
-                        break;
-                }
+                case 'set_current_business':
+                    $business_id = (int) ($_POST['business_id'] ?? 0);
+
+                    if ($business_id <= 0) {
+                        $errors[] = 'Invalid business ID.';
+                    } else {
+                        $success = set_current_business($business_id);
+                        if ($success) {
+                            $messages[] = 'Business switched successfully!';
+                        } else {
+                            $errors[] = 'Failed to switch business. Business not found or access denied.';
+                        }
+                    }
+                    break;
+
+                default:
+                    $errors[] = 'Invalid action specified.';
+                    break;
             }
-
-            // Redirect to prevent form resubmission
+            // Redirect to prevent form resubmission for business actions
             $redirect_url = $_POST['redirect_url'] ?? '/business';
             redirect($redirect_url);
         }
+    }
 // </post-request-handling>
 
-// <authentication-flow>
-    // File path
-        $request_uri = $_SERVER['REQUEST_URI'];
-        $path = parse_url($request_uri, PHP_URL_PATH);
-        $path = trim($path, '/');
-    // Validate existing session
-        if (isset($_SESSION['user']) && !is_valid_session()) {
-            // Invalid session, clear it
-            $_SESSION = [];
-            session_destroy();
-            session_start();
-        }
-    // Handle logout
+// Determine current page
+$request_uri = $_SERVER['REQUEST_URI'];
+$path = parse_url($request_uri, PHP_URL_PATH);
+$path = trim($path, '/');
+$current_page = $path ?: 'home';
+$is_logged_in = is_logged_in();
+$user = get_user();
+            $state = $_GET['state'] ?? '';
+            $error_param = $_GET['error'] ?? '';
+
+            // Handle OAuth errors
+            if ($error_param) {
+                error_log("Google OAuth error: " . $error_param);
+                $errors[] = 'Authentication was cancelled or failed. Please try again.';
+            }
+            // Validate state parameter for CSRF protection
+            elseif (empty($state) || !isset($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
+                error_log("Google OAuth state validation failed. Expected: " . ($_SESSION['oauth_state'] ?? 'none') . ", Got: " . $state);
+                $errors[] = 'Invalid authentication state. Please try again.';
+            }
+            // Check if state is not too old (5 minutes max)
+            elseif (!isset($_SESSION['oauth_timestamp']) || (time() - $_SESSION['oauth_timestamp']) > 300) {
+                error_log("Google OAuth state expired. Timestamp: " . ($_SESSION['oauth_timestamp'] ?? 'none'));
+                $errors[] = 'Authentication session expired. Please try again.';
+            }
+            else {
+                // Clear OAuth state from session
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+
+                try {
+                    // Exchange code for access token
+                    $token_info = exchange_code_for_token($code);
+
+                    if (isset($token_info['access_token'])) {
+                        // Get user info from Google
+                        $user_data = get_google_user_info($token_info['access_token']);
+
+                        if ($user_data && isset($user_data['email'])) {
+                            // Save user to database and store in session
+                            $db_user = create_or_update_google_user($user_data);
+
+                            if ($db_user) {
+                                // Regenerate session ID for security
+                                session_regenerate_id(true);
+
+                                $_SESSION['user'] = [
+                                    'id' => $db_user['id'],
+                                    'google_id' => $db_user['google_id'],
+                                    'name' => $db_user['name'],
+                                    'email' => $db_user['email'],
+                                    'picture' => $db_user['picture'],
+                                    'role' => $db_user['role'] ?? 'user',
+                                    'is_paid' => $db_user['is_paid'] ?? 0,
+                                    'created_at' => $db_user['created_at'],
+                                    'updated_at' => $db_user['updated_at']
+                                ];
+                                $_SESSION['login_time'] = time();
+                                $_SESSION['login_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+                                // No need to restore from cookie as current business is stored in database
+                                // The get_current_business() function will automatically fetch from database
+
+                                // Redirect to dashboard
+                                redirect('/dashboard');
+                            } else {
+                                error_log("Failed to create/update user in database for email: " . $user_data['email']);
+                                $errors[] = 'Failed to create user account. Please try again.';
+                            }
+                        } else {
+                            error_log("Failed to get user info from Google or missing email");
+                            $errors[] = 'Failed to retrieve user information from Google. Please try again.';
+                        }
+                    } else {
+                        error_log("Failed to exchange code for token");
+                        $errors[] = 'Failed to authenticate with Google. Please try again.';
+                    }
+                } catch (Exception $e) {
+                    error_log("Google OAuth exception: " . $e->getMessage());
+                    $errors[] = "Authentication failed. Please try again.";
+                }
+            }
+
+            // Clean up OAuth session data on any error
+            if (!empty($errors)) {
+                unset($_SESSION['oauth_state'], $_SESSION['oauth_timestamp']);
+            }
+
+    // Handle logout with comprehensive cleanup
         if (isset($_GET['logout']) || $path === 'logout') {
+            // No need to save business ID to cookie as it's now stored in the database
+
             // Clear all session data
             $_SESSION = array();
 
@@ -939,6 +977,13 @@
                 );
             }
 
+            // Clear any OAuth-related cookies
+            $expire_time = time() - 3600; // Set expiration to the past
+
+            // Clear potential OAuth cookies
+            setcookie('oauth_state', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+            setcookie('google_auth', '', $expire_time, '/', '', isset($_SERVER['HTTPS']), true);
+
             // Destroy session
             session_destroy();
 
@@ -946,7 +991,7 @@
             header('Location: /?t=' . time());
             exit;
         }
-// </authentication-flow>
+// </oauth-flow>
 
 // <routing>
     // Define routes grouped by category
@@ -967,6 +1012,7 @@
                 'settings' => ['page' => 'settings', 'title' => 'Settings - MonoPHP', 'paid_only' => true]
             ],
             'other' => [
+                'auth/google/callback' => ['page' => 'oauth_callback', 'title' => 'MonoPHP', 'paid_only' => false],
                 'logout' => ['page' => 'logout', 'title' => 'MonoPHP', 'paid_only' => false]
             ]
         ];
@@ -1384,6 +1430,181 @@
                     margin: 0 20px; /* horizontal margins on tablet */
                     }
                 }
+
+                /* Login Modal Styles */
+                .modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: auto;
+                    background-color: rgba(0, 0, 0, 0.4);
+                    animation: fadeIn 0.3s ease;
+                }
+
+                .modal-content {
+                    background-color: var(--white);
+                    margin: 5% auto 15% auto;
+                    padding: 0;
+                    border: none;
+                    border-radius: var(--radius-md);
+                    width: 90%;
+                    max-width: 450px;
+                    box-shadow: var(--shadow-lg);
+                    position: relative;
+                    animation: slideIn 0.3s ease;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes slideIn {
+                    from { transform: translateY(-50px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+
+                .close {
+                    color: var(--text-muted);
+                    position: absolute;
+                    right: var(--space-md);
+                    top: var(--space-md);
+                    font-size: var(--text-xl);
+                    font-weight: var(--font-bold);
+                    cursor: pointer;
+                    z-index: 1001;
+                }
+
+                .close:hover,
+                .close:focus {
+                    color: var(--text-primary);
+                }
+
+                .tab-buttons {
+                    display: flex;
+                    background: var(--bg-card);
+                    border-bottom: 1px solid var(--border-light);
+                }
+
+                .tab-btn {
+                    flex: 1;
+                    padding: var(--space-md) var(--space-lg);
+                    background: none;
+                    border: none;
+                    font-size: var(--text-base);
+                    cursor: pointer;
+                    color: var(--text-secondary);
+                    transition: all var(--transition-base);
+                    border-bottom: 2px solid transparent;
+                }
+
+                .tab-btn.active {
+                    color: var(--primary);
+                    border-bottom-color: var(--primary);
+                    font-weight: var(--font-medium);
+                }
+
+                .tab-btn:hover {
+                    background: var(--bg-hover);
+                }
+
+                .tab-content {
+                    display: none;
+                    padding: var(--space-lg);
+                }
+
+                .tab-content.active {
+                    display: block;
+                }
+
+                .tab-content h3 {
+                    margin: 0 0 var(--space-md) 0;
+                    color: var(--text-primary);
+                    text-align: center;
+                    font-size: var(--text-xl);
+                }
+
+                .form-group {
+                    margin-bottom: var(--space-lg);
+                }
+
+                .form-group label {
+                    display: block;
+                    margin-bottom: var(--space-xs);
+                    color: var(--text-secondary);
+                    font-weight: var(--font-medium);
+                    font-size: var(--text-sm);
+                }
+
+                .form-group input {
+                    width: 100%;
+                    padding: var(--space-sm);
+                    border: 1px solid var(--border-light);
+                    border-radius: var(--radius-sm);
+                    font-size: var(--text-base);
+                    box-sizing: border-box;
+                    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+                }
+
+                .form-group input:focus {
+                    outline: none;
+                    border-color: var(--primary);
+                    box-shadow: 0 0 0 2px var(--primary-transparent);
+                }
+
+                .button.primary {
+                    width: 100%;
+                    padding: var(--space-md);
+                    background: var(--primary);
+                    color: var(--white);
+                    border: none;
+                    border-radius: var(--radius-md);
+                    font-size: var(--text-base);
+                    font-weight: var(--font-medium);
+                    cursor: pointer;
+                    transition: background var(--transition-base);
+                }
+
+                .button.primary:hover {
+                    background: var(--primary-dark);
+                }
+
+                .tab-content p {
+                    text-align: center;
+                    margin-top: var(--space-md);
+                    color: var(--text-secondary);
+                }
+
+                .tab-content a {
+                    color: var(--primary);
+                    text-decoration: none;
+                    font-weight: var(--font-medium);
+                }
+
+                .tab-content a:hover {
+                    text-decoration: underline;
+                }
+
+                @media (max-width: 768px) {
+                    .modal-content {
+                        margin: 10% auto;
+                        width: 95%;
+                    }
+                    .tab-buttons {
+                        flex-direction: column;
+                    }
+                    .tab-btn {
+                        border-bottom: none;
+                        border-right: 2px solid transparent;
+                    }
+                    .tab-btn.active {
+                        border-right-color: var(--primary);
+                    }
+                }
                 </style>
         <!--// Navbar HTML-->
                 <nav id="navbar">
@@ -1442,12 +1663,62 @@
                         <?php if ($is_logged_in): ?>
                             <a href="/dashboard" class="button">Dashboard</a>
                         <?php else: ?>
-                            <a href="#" onclick="document.getElementById('loginModal').style.display='block'; return false;" style="background: #4285f4; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 500;">
-                                Sign In
-                            </a>
+                            <a href="#" class="button" onclick="showLoginModal()">Sign In</a>
+                        <?php endif; ?>
+                        <?php if ($is_logged_in): ?>
+                            <a href="?action=logout" class="button" style="background: #dc3545; margin-left: var(--space-sm);">Logout</a>
                         <?php endif; ?>
                     </div>
                 </nav>
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeLoginModal()">&times;</span>
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="showLoginTab(this)">Login</button>
+            <button class="tab-btn" onclick="showRegisterTab(this)">Sign Up</button>
+        </div>
+        <div id="loginTab" class="tab-content active">
+            <h3>Login to your account</h3>
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="login">
+                <?= csrf_field() ?>
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="button primary">Login</button>
+            </form>
+            <p>Don't have an account? <a href="#" onclick="showRegisterTab(document.querySelector('.tab-btn:last-child'))">Sign up here</a></p>
+        </div>
+        <div id="registerTab" class="tab-content">
+            <h3>Create new account</h3>
+            <form method="POST" action="">
+                <input type="hidden" name="action" value="register">
+                <?= csrf_field() ?>
+                <div class="form-group">
+                    <label for="reg-name">Full Name</label>
+                    <input type="text" id="reg-name" name="name" required placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" name="email" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" name="password" required minlength="6" placeholder="At least 6 characters">
+                </div>
+                <button type="submit" class="button primary">Sign Up</button>
+            </form>
+            <p>Already have an account? <a href="#" onclick="showLoginTab(document.querySelector('.tab-btn:first-child'))">Login here</a></p>
+        </div>
+    </div>
+</div>
     <!--Public Page-->
         <!--Home Page-->
             <?php switch ($current_page) { case 'home': ?>
@@ -3138,122 +3409,41 @@
 <!-- </other-container>  -->
 
 <?php } ?>
-
-<!-- Login/Register Modal -->
-<div id="loginModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
-    <div style="background-color: #fefefe; margin: 5% auto; padding: 0; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-        <!-- Modal Header -->
-        <div style="padding: 20px 30px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 24px; color: #333;" id="modalTitle">Sign In</h2>
-            <span onclick="document.getElementById('loginModal').style.display='none'" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
-        </div>
-        
-        <!-- Error/Success Messages -->
-        <?php if (!empty($errors)): ?>
-            <div style="background-color: #fee; border-left: 4px solid #f44; padding: 12px 30px; margin: 20px 30px 0; border-radius: 4px;">
-                <?php foreach ($errors as $error): ?>
-                    <p style="margin: 4px 0; color: #c33;"><?= e($error); ?></p>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-        
-        <!-- Modal Body -->
-        <div style="padding: 30px;">
-            <!-- Login Form -->
-            <form id="loginForm" method="POST" action="/" style="display: block;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="login">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Sign In
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Don't have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign Up</a>
-                </p>
-            </form>
-            
-            <!-- Register Form -->
-            <form id="registerForm" method="POST" action="/" style="display: none;">
-                <?= csrf_field(); ?>
-                <input type="hidden" name="action" value="register">
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Name</label>
-                    <input type="text" name="name" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Email</label>
-                    <input type="email" name="email" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Password</label>
-                    <input type="password" name="password" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                    <small style="color: #888; font-size: 12px;">Minimum 6 characters</small>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Confirm Password</label>
-                    <input type="password" name="password_confirm" required minlength="6" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; transition: background 0.3s;">
-                    Create Account
-                </button>
-                
-                <p style="text-align: center; margin-top: 20px; color: #666;">
-                    Already have an account? 
-                    <a href="#" onclick="toggleForms(); return false;" style="color: #4285f4; text-decoration: none; font-weight: 500;">Sign In</a>
-                </p>
-            </form>
-        </div>
-    </div>
-</div>
-
 <script>
-    function toggleForms() {
-        var loginForm = document.getElementById('loginForm');
-        var registerForm = document.getElementById('registerForm');
-        var modalTitle = document.getElementById('modalTitle');
-        
-        if (loginForm.style.display === 'none') {
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-            modalTitle.textContent = 'Sign In';
-        } else {
-            loginForm.style.display = 'none';
-            registerForm.style.display = 'block';
-            modalTitle.textContent = 'Create Account';
-        }
-    }
-    
-    // Close modal when clicking outside of it
-    window.onclick = function(event) {
-        var modal = document.getElementById('loginModal');
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-    
-    // Show modal if there are errors
-    <?php if (!empty($errors) && !is_logged_in()): ?>
-        document.getElementById('loginModal').style.display = 'block';
-    <?php endif; ?>
-</script>
+function showLoginModal() {
+    document.getElementById('loginModal').style.display = 'block';
+    document.getElementById('loginTab').classList.add('active');
+    document.getElementById('registerTab').classList.remove('active');
+    document.querySelector('.tab-btn:first-child').classList.add('active');
+    document.querySelector('.tab-btn:last-child').classList.remove('active');
+}
 
+function closeLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+}
+
+function showLoginTab(btn) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('loginTab').classList.add('active');
+    btn.classList.add('active');
+}
+
+function showRegisterTab(btn) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('registerTab').classList.add('active');
+    btn.classList.add('active');
+}
+
+// Close modal if clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('loginModal');
+    if (event.target === modal) {
+        closeLoginModal();
+    }
+}
+</script>
 </body>
 </html>
 <!--<EOF>-->
