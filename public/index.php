@@ -111,6 +111,7 @@
                 $context .= sprintf("%s%d: %s", $marker, $line_num, $lines[$i]);
             }
 
+
             return $context;
         }
     // Development environment
