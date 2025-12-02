@@ -90,7 +90,7 @@
         $error_log_path = SITE_LOG_FILE;
         if (!file_exists($error_log_path)) {
             touch($error_log_path);
-            chmod($error_log_path, 0666);
+            chmod($error_log_path, 0640);
         }
     // Helper function to get error type name
         function getErrorTypeName($errno) {

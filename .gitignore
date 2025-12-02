@@ -6,6 +6,9 @@
 public/assets/uploads/*
 !public/assets/uploads/.gitkeep
 
+# Prevent PHP files in uploads directory (security)
+public/assets/uploads/*.php
+
 # Log files
 *.log
 
