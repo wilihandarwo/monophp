@@ -182,10 +182,11 @@ create_project() {
         sed -i "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
     fi
 
-    # Clear logs and database (start fresh)
+    # Ensure directories exist and are clean
+    mkdir -p "$target_dir/logs"
+    mkdir -p "$target_dir/database"
     rm -f "$target_dir/database/"*.sqlite
     rm -f "$target_dir/logs/"*.log
-    touch "$target_dir/logs/app.log"
     touch "$target_dir/database/.gitkeep"
     touch "$target_dir/logs/.gitkeep"
 
@@ -194,14 +195,21 @@ create_project() {
     cd "$target_dir"
     git init --quiet
 
+    # Success message
     echo ""
     echo -e "${GREEN}✓ Project '${project_name}' created successfully!${NC}"
     echo ""
-    echo -e "Next steps:"
+    echo -e "  ${GREEN}✓${NC} Authentication: $(if [[ $auth_choice -eq 0 ]]; then echo 'Email & Password'; else echo 'Google OAuth'; fi)"
+    echo -e "  ${GREEN}✓${NC} Environment file: .env created"
+    echo -e "  ${GREEN}✓${NC} Database: database/${project_name}.sqlite (will be created on first run)"
+    echo -e "  ${GREEN}✓${NC} Logs folder: logs/"
+    echo ""
+    echo -e "${YELLOW}To start your project:${NC}"
+    echo ""
     echo -e "  ${BLUE}cd ${project_name}${NC}"
-    echo -e "  ${BLUE}# Edit .env with your configuration${NC}"
-    echo -e "  ${BLUE}# Start PHP built-in server:${NC}"
     echo -e "  ${BLUE}php -S localhost:8000 -t public${NC}"
+    echo ""
+    echo -e "Then open ${BLUE}http://localhost:8000${NC} in your browser."
     echo ""
 }
 
