@@ -94,6 +94,33 @@ create_project() {
     rm -f "$target_dir/CLAUDE.md"
     rm -f "$target_dir/WARP.md"
 
+    # Prompt for authentication variant
+    echo ""
+    echo -e "${YELLOW}Select authentication method:${NC}"
+    echo ""
+    echo -e "  ${BLUE}1)${NC} Email & Password"
+    echo -e "  ${BLUE}2)${NC} Google OAuth"
+    echo ""
+    read -p "Enter choice [1-2]: " auth_choice
+
+    case "$auth_choice" in
+        1)
+            echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
+            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
+            ;;
+        2)
+            echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
+            cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
+            ;;
+        *)
+            echo -e "${YELLOW}➜${NC} Invalid choice, defaulting to Email & Password..."
+            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
+            ;;
+    esac
+
+    # Remove variant files (not needed in new projects)
+    rm -rf "$target_dir/resources/index-variant"
+
     # Create .env from .env.example
     cp "$target_dir/.env.example" "$target_dir/.env"
 
