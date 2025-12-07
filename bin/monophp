@@ -47,6 +47,59 @@ show_version() {
     echo "MonoPHP Generator v${VERSION}"
 }
 
+# Interactive menu with arrow key navigation
+select_option() {
+    local options=("$@")
+    local selected=0
+    local count=${#options[@]}
+
+    # Hide cursor
+    tput civis
+
+    # Ensure cursor is restored on exit
+    trap 'tput cnorm' EXIT
+
+    while true; do
+        # Print options
+        for i in "${!options[@]}"; do
+            if [[ $i -eq $selected ]]; then
+                echo -e "  ${GREEN}▸ ${options[$i]}${NC}"
+            else
+                echo -e "    ${options[$i]}"
+            fi
+        done
+
+        # Read single key
+        read -rsn1 key
+
+        # Handle arrow keys (escape sequences)
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 key
+            case $key in
+                '[A') # Up arrow
+                    ((selected--)) || true
+                    [[ $selected -lt 0 ]] && selected=$((count - 1))
+                    ;;
+                '[B') # Down arrow
+                    ((selected++)) || true
+                    [[ $selected -ge $count ]] && selected=0
+                    ;;
+            esac
+        elif [[ $key == "" ]]; then  # Enter key
+            break
+        fi
+
+        # Move cursor up to redraw
+        tput cuu $count
+    done
+
+    # Show cursor
+    tput cnorm
+
+    # Return selected index
+    return $selected
+}
+
 create_project() {
     local project_name="$1"
     local target_dir="$(pwd)/${project_name}"
@@ -96,27 +149,20 @@ create_project() {
 
     # Prompt for authentication variant
     echo ""
-    echo -e "${YELLOW}Select authentication method:${NC}"
+    echo -e "${YELLOW}Select authentication method:${NC}  ${BLUE}(↑↓ to move, Enter to select)${NC}"
     echo ""
-    echo -e "  ${BLUE}1)${NC} Email & Password"
-    echo -e "  ${BLUE}2)${NC} Google OAuth"
-    echo ""
-    read -p "Enter choice [1-2]: " auth_choice
 
-    case "$auth_choice" in
-        1)
-            echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
-            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
-            ;;
-        2)
-            echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
-            cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
-            ;;
-        *)
-            echo -e "${YELLOW}➜${NC} Invalid choice, defaulting to Email & Password..."
-            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
-            ;;
-    esac
+    select_option "Email & Password" "Google OAuth"
+    auth_choice=$?
+
+    echo ""
+    if [[ $auth_choice -eq 0 ]]; then
+        echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
+        cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
+    else
+        echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
+        cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
+    fi
 
     # Remove variant files (not needed in new projects)
     rm -rf "$target_dir/resources/index-variant"

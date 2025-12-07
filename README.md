@@ -9,7 +9,7 @@ ARCHITECTURE:
 - Procedural programming using functions and variables only
 - No OOP, no frameworks, no external dependencies (except jQuery)
 - SQLite for database
-- Google Authentication for login
+- Authentication: Email/Password or Google OAuth (choose during setup)
 
 TECH STACK:
 - Backend: Vanilla PHP 8+ (procedural style)
@@ -57,13 +57,21 @@ MonoPHP includes a CLI tool to scaffold new projects, similar to `laravel new`.
 
    monophp new myproject
 
-4. Start developing:
+4. Select authentication method using arrow keys:
+
+   Select authentication method:  (↑↓ to move, Enter to select)
+
+     ▸ Email & Password
+       Google OAuth
+
+5. Start developing:
 
    cd myproject
    php -S localhost:8000 -t public
 
 The generator will:
 - Download the latest MonoPHP template from GitHub
+- Prompt you to choose authentication method (Email/Password or Google OAuth)
 - Set SITE_DOMAIN to <project-name>.test
 - Rename the database file to <project-name>.sqlite
 - Initialize a fresh git repository
