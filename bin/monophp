@@ -5,7 +5,7 @@
 
 set -e
 
-MONOPHP_TEMPLATE_DIR="/Users/wilihandarwo/dev/php/monophp"
+MONOPHP_REPO="https://github.com/wilihandarwo/monophp.git"
 VERSION="1.0.0"
 
 # Colors
@@ -71,10 +71,9 @@ create_project() {
         exit 1
     fi
 
-    # Check if template directory exists
-    if [[ ! -d "$MONOPHP_TEMPLATE_DIR" ]]; then
-        echo -e "${RED}Error: MonoPHP template not found at ${MONOPHP_TEMPLATE_DIR}${NC}"
-        echo "Please update MONOPHP_TEMPLATE_DIR in this script"
+    # Check for git
+    if ! command -v git &> /dev/null; then
+        echo -e "${RED}Error: git is required but not installed${NC}"
         exit 1
     fi
 
@@ -82,62 +81,42 @@ create_project() {
     echo -e "${GREEN}Creating new MonoPHP project: ${project_name}${NC}"
     echo ""
 
-    # Create project directory
-    mkdir -p "$target_dir"
+    # Clone from GitHub
+    echo -e "${YELLOW}➜${NC} Downloading MonoPHP template..."
+    git clone --quiet --depth 1 "$MONOPHP_REPO" "$target_dir"
 
-    # Copy template files (excluding .git, .env, database/*.sqlite, logs/*)
-    echo -e "${YELLOW}➜${NC} Copying template files..."
-    
-    # Create directory structure
-    mkdir -p "$target_dir/public"
-    mkdir -p "$target_dir/database"
-    mkdir -p "$target_dir/logs"
-    mkdir -p "$target_dir/resources"
+    # Remove .git directory from template and reinitialize
+    rm -rf "$target_dir/.git"
 
-    # Copy main application file
-    cp "$MONOPHP_TEMPLATE_DIR/public/index.php" "$target_dir/public/index.php"
+    # Remove CLI-related files (not needed in new projects)
+    rm -rf "$target_dir/bin"
+    rm -f "$target_dir/install.sh"
+    rm -f "$target_dir/CLAUDE.md"
+    rm -f "$target_dir/WARP.md"
 
-    # Copy .env.example
-    cp "$MONOPHP_TEMPLATE_DIR/.env.example" "$target_dir/.env.example"
-    cp "$MONOPHP_TEMPLATE_DIR/.env.example" "$target_dir/.env"
-
-    # Copy .gitignore if exists
-    if [[ -f "$MONOPHP_TEMPLATE_DIR/.gitignore" ]]; then
-        cp "$MONOPHP_TEMPLATE_DIR/.gitignore" "$target_dir/.gitignore"
-    fi
-
-    # Copy README if exists
-    if [[ -f "$MONOPHP_TEMPLATE_DIR/README.md" ]]; then
-        cp "$MONOPHP_TEMPLATE_DIR/README.md" "$target_dir/README.md"
-    fi
-
-    # Copy resources directory contents if any
-    if [[ -d "$MONOPHP_TEMPLATE_DIR/resources" ]]; then
-        cp -r "$MONOPHP_TEMPLATE_DIR/resources/"* "$target_dir/resources/" 2>/dev/null || true
-    fi
-
-    # Copy public/assets if exists
-    if [[ -d "$MONOPHP_TEMPLATE_DIR/public/assets" ]]; then
-        cp -r "$MONOPHP_TEMPLATE_DIR/public/assets" "$target_dir/public/"
-    fi
+    # Create .env from .env.example
+    cp "$target_dir/.env.example" "$target_dir/.env"
 
     # Replace project-specific values
     echo -e "${YELLOW}➜${NC} Configuring project..."
 
-    # Update database filename in index.php
-    sed -i '' "s/monophp\.sqlite/${project_name}.sqlite/g" "$target_dir/public/index.php"
+    # Update database filename in index.php (cross-platform sed)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/monophp\.sqlite/${project_name}.sqlite/g" "$target_dir/public/index.php"
+        sed -i '' "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
+    else
+        sed -i "s/monophp\.sqlite/${project_name}.sqlite/g" "$target_dir/public/index.php"
+        sed -i "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
+    fi
 
-    # Update SITE_DOMAIN in .env with project name as placeholder
-    sed -i '' "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
-
-    # Create empty log file
+    # Clear logs and database (start fresh)
+    rm -f "$target_dir/database/"*.sqlite
+    rm -f "$target_dir/logs/"*.log
     touch "$target_dir/logs/app.log"
-
-    # Create .gitkeep files
     touch "$target_dir/database/.gitkeep"
     touch "$target_dir/logs/.gitkeep"
 
-    # Initialize git repository
+    # Initialize fresh git repository
     echo -e "${YELLOW}➜${NC} Initializing git repository..."
     cd "$target_dir"
     git init --quiet
