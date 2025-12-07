@@ -181,23 +181,35 @@ create_project() {
     auth_choice=$SELECTED_OPTION
 
     echo ""
+    auth_label="Email & Password"  # Default
+    local variant_file=""
     case $auth_choice in
         0)
             auth_label="Email & Password"
-            echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
-            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
+            variant_file="index-emailpass-sidebar.php"
             ;;
         1)
             auth_label="Google OAuth"
-            echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
-            cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
+            variant_file="index-googleoauth.php"
             ;;
         2)
             auth_label="No Auth"
-            echo -e "${YELLOW}➜${NC} Using No Auth (public access)..."
-            cp "$target_dir/resources/index-variant/index-noauth.php" "$target_dir/public/index.php"
+            variant_file="index-noauth.php"
+            ;;
+        *)
+            variant_file="index-emailpass-sidebar.php"
             ;;
     esac
+
+    echo -e "${YELLOW}➜${NC} Using ${auth_label} authentication..."
+    if [[ -f "$target_dir/resources/index-variant/$variant_file" ]]; then
+        cp "$target_dir/resources/index-variant/$variant_file" "$target_dir/public/index.php"
+    else
+        echo -e "${RED}Error: Variant file not found: $variant_file${NC}"
+        echo -e "${RED}Please run 'monophp update' to get the latest version${NC}"
+        rm -rf "$target_dir"
+        exit 1
+    fi
 
     # Remove variant files (not needed in new projects)
     rm -rf "$target_dir/resources/index-variant"
