@@ -41,3 +41,28 @@ DEVELOPMENT PHILOSOPHY:
 - No over-engineering or unnecessary abstractions
 - Direct, readable code that's easy to understand
 - Fast development and deployment
+
+INSTALLATION (CLI Generator):
+MonoPHP includes a CLI tool to scaffold new projects, similar to `laravel new`.
+
+1. Install globally (choose one):
+
+   # Option A: Symlink to /usr/local/bin (requires sudo)
+   sudo ln -sf /path/to/monophp/bin/monophp /usr/local/bin/monophp
+
+   # Option B: Add to PATH in ~/.zshrc or ~/.bashrc
+   echo 'export PATH="/path/to/monophp/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+
+2. Create a new project:
+   monophp new myproject
+
+3. Start developing:
+   cd myproject
+   php -S localhost:8000 -t public
+
+The generator will:
+- Copy the MonoPHP template structure
+- Set SITE_DOMAIN to <project-name>.test
+- Rename the database file to <project-name>.sqlite
+- Initialize a git repository
