@@ -48,6 +48,7 @@ show_version() {
 }
 
 # Interactive menu with arrow key navigation
+# Result is stored in SELECTED_OPTION variable
 select_option() {
     local options=("$@")
     local selected=0
@@ -96,8 +97,8 @@ select_option() {
     # Show cursor
     tput cnorm
 
-    # Return selected index
-    return $selected
+    # Store result in global variable (avoids set -e issues with return codes)
+    SELECTED_OPTION=$selected
 }
 
 create_project() {
@@ -153,7 +154,7 @@ create_project() {
     echo ""
 
     select_option "Email & Password" "Google OAuth" "No Auth"
-    auth_choice=$?
+    auth_choice=$SELECTED_OPTION
 
     echo ""
     case $auth_choice in
