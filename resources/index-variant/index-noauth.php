@@ -1,0 +1,1183 @@
+<?php
+// <initial setting>
+    // Strict types
+        declare(strict_types=1);
+    // Define development mode
+        // $is_development = false;
+        $is_development =
+            $_SERVER["SERVER_NAME"] === "localhost" ||
+            $_SERVER["SERVER_ADDR"] === "127.0.0.1" ||
+            $_SERVER["REMOTE_ADDR"] === "127.0.0.1";
+// </initial setting>
+
+// <env>
+    // Locate env file
+        const SITE_ENV_FILE = __DIR__ . "/../../.env";
+    // Function to load env
+        function load_env() {
+            if (!file_exists(SITE_ENV_FILE)) {
+                die(".env file not found");
+            }
+
+            $lines = file(SITE_ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), "#") === 0) {
+                    continue;
+                }
+                [$key, $value] = explode("=", $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+                if (strpos($value, '"') === 0 || strpos($value, "'") === 0) {
+                    $value = substr($value, 1, -1);
+                }
+                putenv("$key=$value");
+                $_ENV[$key] = $value;
+            }
+        }
+        load_env();
+// </env>
+
+// <config>
+    // Site settings
+        const SITE_APP_VERSION = "1.0.0";
+        define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
+    // File location
+        const SITE_DB_FILE = __DIR__ . "/../../database/monophp.sqlite";
+        const SITE_LOG_FILE = __DIR__ . "/../../logs/app.log";
+// </config>
+
+// <session-management>
+    // Initialize session (minimal - only for CSRF)
+        ini_set("session.use_only_cookies", "1");
+    // Extract domain from SITE_DOMAIN (remove protocol if present)
+        $session_domain = SITE_DOMAIN;
+        if (strpos($session_domain, 'http://') === 0) {
+            $session_domain = substr($session_domain, 7);
+        } elseif (strpos($session_domain, 'https://') === 0) {
+            $session_domain = substr($session_domain, 8);
+        }
+    // Set cookie parameters
+        session_set_cookie_params([
+            "lifetime" => 86400, // 24 hours
+            "path" => "/",
+            "domain" => $session_domain === 'localhost' ? '' : $session_domain,
+            "secure" => isset($_SERVER["HTTPS"]),
+            "httponly" => true,
+            "samesite" => "Lax",
+        ]);
+    // Start session
+        session_start();
+// </session-management>
+
+// <security-headers>
+    // csrf
+        if (empty($_SESSION["csrf_token"])) {
+            $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+        }
+        $csrf_token = $_SESSION["csrf_token"];
+    // csp
+        header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://code.jquery.com https://kit.fontawesome.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com https://fonts.googleapis.com;; img-src 'self' https://*.googleusercontent.com data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://ka-f.fontawesome.com;");
+// </security-headers>
+
+// <error-handling>
+    // Setup error log
+        $error_log_path = SITE_LOG_FILE;
+        if (!file_exists($error_log_path)) {
+            touch($error_log_path);
+            chmod($error_log_path, 0640);
+        }
+    // Helper function to get error type name
+        function getErrorTypeName($errno) {
+            return match ($errno) { E_ERROR => "Fatal Error", E_WARNING => "Warning", E_PARSE => "Parse Error", E_NOTICE => "Notice", E_CORE_ERROR => "Core Error", E_CORE_WARNING => "Core Warning", E_COMPILE_ERROR => "Compile Error", E_COMPILE_WARNING => "Compile Warning", E_USER_ERROR => "User Error", E_USER_WARNING => "User Warning", E_USER_NOTICE => "User Notice", E_RECOVERABLE_ERROR => "Recoverable Error", E_DEPRECATED => "Deprecated", E_USER_DEPRECATED => "User Deprecated", default => "Unknown Error", };
+        }
+    // Helper function to get code context
+        function getCodeContext($file, $line, $context_lines = 5) {
+            if (!file_exists($file)) return "File not found";
+
+            $lines = file($file);
+            $start = max(0, $line - $context_lines - 1);
+            $end = min(count($lines), $line + $context_lines);
+
+            $context = "";
+            for ($i = $start; $i < $end; $i++) {
+                $line_num = $i + 1;
+                $marker = ($line_num == $line) ? " >>> " : "     ";
+                $context .= sprintf("%s%d: %s", $marker, $line_num, $lines[$i]);
+            }
+
+
+            return $context;
+        }
+    // Development environment
+        if ($is_development) {
+            error_reporting(E_ALL);
+            ini_set("display_errors", 0);
+            ini_set("display_startup_errors", 0);
+
+            // Error handler for development
+            set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+                $error_type = getErrorTypeName($errno);
+                $code_context = getCodeContext($errfile, $errline);
+
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ {$error_type}</h3>";
+                echo "<p><strong>Message:</strong> {$errstr}</p>";
+                echo "<p><strong>File:</strong> {$errfile}</p>";
+                echo "<p><strong>Line:</strong> {$errline}</p>";
+                echo "<details><summary><strong>Code Context</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+                echo "</details>";
+                echo "</div>";
+
+                return true;
+            });
+
+            // Exception handler for development
+            set_exception_handler(function ($e) {
+                $code_context = getCodeContext($e->getFile(), $e->getLine());
+
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>💥 Uncaught Exception</h3>";
+                echo "<p><strong>Message:</strong> " . $e->getMessage() . "</p>";
+                echo "<p><strong>File:</strong> " . $e->getFile() . "</p>";
+                echo "<p><strong>Line:</strong> " . $e->getLine() . "</p>";
+                echo "<details><summary><strong>Code Context</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>{$code_context}</pre>";
+                echo "</details>";
+                echo "<details><summary><strong>Stack Trace</strong></summary>";
+                echo "<pre style='background: #fff; padding: 10px; overflow-x: auto;'>" . $e->getTraceAsString() . "</pre>";
+                echo "</details>";
+                echo "</div>";
+            });
+    // Production environment
+        } else {
+            error_reporting(E_ALL);
+            ini_set("display_errors", 0);
+            ini_set("display_startup_errors", 0);
+            ini_set("log_errors", 1);
+            ini_set("error_log", $error_log_path);
+
+            // Start error group logging
+            date_default_timezone_set("Asia/Jakarta");
+            $date = date("Y-m-d H:i:s");
+            $uri = $_SERVER["REQUEST_URI"] ?? 'CLI';
+            $separator = "\n========== Error Group: {$date} WIB | URI: {$uri} ==========\n";
+            file_put_contents($error_log_path, $separator, FILE_APPEND);
+
+            // Error handler for production
+            set_error_handler(function ($errno, $errstr, $errfile, $errline) use ($error_log_path) {
+                $date = date("Y-m-d H:i:s");
+                $error_type = getErrorTypeName($errno);
+                $error_message = "[{$date}] {$error_type} [{$errno}]: {$errstr}\n";
+                $error_message .= "File: {$errfile}\n";
+                $error_message .= "Line: {$errline}\n\n";
+                file_put_contents($error_log_path, $error_message, FILE_APPEND);
+                return true;
+            });
+
+            // Exception handler for production
+            set_exception_handler(function ($e) use ($error_log_path) {
+                $date = date("Y-m-d H:i:s");
+                $error_message = "[{$date}] Uncaught Exception: " . $e->getMessage() . "\n";
+                $error_message .= "File: " . $e->getFile() . "\n";
+                $error_message .= "Line: " . $e->getLine() . "\n";
+                $error_message .= "\nTrace:\n" . $e->getTraceAsString() . "\n";
+                file_put_contents($error_log_path, $error_message, FILE_APPEND);
+
+                // End error group
+                $separator = "==========\n\n";
+                file_put_contents($error_log_path, $separator, FILE_APPEND);
+
+                http_response_code(500);
+                echo "<div style='font-family: monospace; background: #f8f8f8; padding: 20px; margin: 20px; border-left: 5px solid #ff5757;'>";
+                echo "<h3 style='color: #ff5757; margin: 0 0 10px 0;'>⚠️ Server Error</h3>";
+                echo "<p>Sorry, something went wrong! Our team has been notified.</p>";
+                echo "</div>";
+                exit();
+            });
+        }
+    // Sample error trigger:
+        // trigger_error("This is a sample error message.", E_USER_ERROR);
+        // undefined_function();
+// </error-handling>
+
+// <database>
+    // Creates and returns a PDO database connection.
+        function get_db_connection(): PDO {
+            try {
+                $pdo = new PDO("sqlite:" . SITE_DB_FILE);
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                $pdo->exec("PRAGMA foreign_keys = ON;");
+                return $pdo;
+            } catch (PDOException $e) {
+                die("Database connection failed: " . $e->getMessage());
+            }
+        }
+    // Initializes the core database tables if they don't exist.
+        function initialize_database(): void {
+            $pdo = get_db_connection();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS migrations (
+                    version TEXT UNIQUE NOT NULL,
+                    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );");
+        }
+    // Runs pending database migrations to update the schema without data loss.
+        function run_migrations(): void {
+            $migrations = [
+                // Migrations can be added here in the future. Example:
+                // '2025_08_01_100000_add_priority_to_todos' => "ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT 'Medium';"
+            ];
+
+            $pdo = get_db_connection();
+            $applied_migrations = $pdo
+                ->query("SELECT version FROM migrations")
+                ->fetchAll(PDO::FETCH_COLUMN);
+
+            $pdo->beginTransaction();
+            try {
+                foreach ($migrations as $version => $sql) {
+                    if (!in_array($version, $applied_migrations)) {
+                        $pdo->exec($sql);
+                        $stmt = $pdo->prepare(
+                            "INSERT INTO migrations (version) VALUES (:version)",
+                        );
+                        $stmt->execute([":version" => $version]);
+                    }
+                }
+                $pdo->commit();
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                die("A database migration failed: " . $e->getMessage());
+            }
+        }
+    // Initialize and migrate database on every run.
+        initialize_database();
+        run_migrations();
+// </database>
+
+// <helpers>
+    // Escapes special characters in a string for safe HTML output.
+        function e(?string $string): string {
+            return htmlspecialchars((string) $string, ENT_QUOTES, "UTF-8");
+        }
+    // Sanitizes input data to prevent XSS attacks.
+        function sanitize_input(array $data): array {
+            $sanitized = [];
+            foreach ($data as $key => $value) {
+                $sanitized[$key] = is_string($value) ? trim(strip_tags($value)) : $value;
+            }
+            return $sanitized;
+        }
+    // CSRF token generation and validation
+        function csrf_token(): string {
+            return $_SESSION['csrf_token'];
+        }
+    // CSRF token field for forms
+        function csrf_field(): string {
+            return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+        }
+    // Redirects to a URL and exits script execution.
+        function redirect(string $url): void {
+            header("Location: $url");
+            exit();
+        }
+// </helpers>
+
+// <view-initialization>
+    // Initialization
+        $errors = [];
+        $messages = [];
+        $pdo = get_db_connection();
+
+        // Initialize session messages array if not set
+        if (!isset($_SESSION['messages'])) {
+            $_SESSION['messages'] = [];
+        }
+// </view-initialization>
+
+// <post-request-handling>
+    // Handle POST requests
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Verify CSRF token on ALL POST requests
+            if (!isset($_POST['csrf_token']) || !hash_equals(csrf_token(), $_POST['csrf_token'])) {
+                die('CSRF token validation failed. Request aborted.');
+            }
+
+            $action = $_POST['action'] ?? '';
+
+            switch ($action) {
+                // Add your custom POST handlers here
+                // case 'custom_action':
+                //     // Handle custom action
+                //     break;
+
+                default:
+                    $errors[] = 'Invalid action specified.';
+                    break;
+            }
+
+            // Redirect to prevent form resubmission
+            $redirect_url = $_POST['redirect_url'] ?? '/';
+            redirect($redirect_url);
+        }
+// </post-request-handling>
+
+// <routing>
+    // File path
+        $request_uri = $_SERVER['REQUEST_URI'];
+        $path = parse_url($request_uri, PHP_URL_PATH);
+        $path = trim($path, '/');
+
+    // Define routes grouped by category
+    // [name of url / slug] => ['page' => [title of switch case logic in html], 'title' => 'Page Title'],
+        $route_categories = [
+            'public' => [
+                '' => ['page' => 'home', 'title' => 'MonoPHP'],
+                'home' => ['page' => 'home', 'title' => 'MonoPHP'],
+                'about' => ['page' => 'about', 'title' => 'About - MonoPHP'],
+                'contact' => ['page' => 'contact', 'title' => 'Contact - MonoPHP'],
+                'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - MonoPHP'],
+            ]
+        ];
+
+    // Find current route info
+        $current_page = 'home';
+        $page_category = 'public';
+        $page_title = 'MonoPHP';
+
+        foreach ($route_categories as $category => $routes) {
+            if (isset($routes[$path])) {
+                $current_page = $routes[$path]['page'];
+                $page_category = $category;
+                $page_title = $routes[$path]['title'];
+                break;
+            }
+        }
+// </routing>
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo e($page_title); ?></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" as="style">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap">
+    <style>
+        :root {
+        /* ========== BRAND COLORS (Primary = Deep Gold) ========== */
+        --primary: #B88400;                    /* Main CTAs, primary buttons, active nav items */
+        --primary-light: #D9A63A;              /* Hover states for primary elements (slightly lighter) */
+        --primary-dark: #7A5200;               /* Active/pressed states, focus rings (deeper gold) */
+        --primary-transparent: #B884001a;      /* Subtle highlights, selection backgrounds, badges */
+
+        --secondary: #2F2E3A;                  /* Charcoal: headings, body text, secondary buttons, links */
+        --secondary-light: #4A4756;            /* Hover for secondary elements */
+        --secondary-dark: #1E1D25;             /* Active states / strong text on light backgrounds */
+        --secondary-transparent: #2F2E3A1a;    /* Subtle charcoal overlays and borders */
+
+        --accent: #22C55E;                     /* Success states, positive indicators, completion badges */
+        --accent-light: #57D987;               /* Success hover states, positive highlights */
+        --accent-dark: #15803D;                /* Success active states, confirmed actions */
+        --accent-transparent: #22C55E1a;       /* Success backgrounds, positive status indicators */
+        /* ========== NEUTRAL COLORS ========== */
+        --white: #ffffff;                      /* Pure white backgrounds, text on dark backgrounds */
+        --white-transparent: #ffffffe6;        /* IMPROVED: More visible than e5 - overlay backgrounds, modals */
+        --black: #000000;                      /* Pure black (rarely used directly) */
+        --gray-50: #f9fafb;                    /* Subtle background variations, disabled states */
+        --gray-100: #f3f4f6;                   /* Light backgrounds, input backgrounds */
+        --gray-200: #e5e7eb;                   /* Borders, dividers, subtle separations */
+        --gray-300: #d1d5db;                   /* Disabled borders, placeholder text */
+        --gray-400: #9ca3af;                   /* Muted text, secondary icons */
+        --gray-500: #6b7280;                   /* Secondary text, less important content */
+        --gray-600: #4b5563;                   /* Primary text on light backgrounds */
+        --gray-700: #374151;                   /* Dark text, headings */
+        --gray-800: #1f2937;                   /* Very dark text, dark mode surfaces */
+        --gray-900: #111827;                   /* Primary text, main content */
+
+        /* ========== SEMANTIC COLORS ========== */
+        --success: #2da165;                    /* Success messages, checkmarks, completed states */
+        --warning: #fadc5b;                    /* Warning messages, caution indicators */
+        --error: #ee4f4f;                      /* Error messages, validation errors, destructive actions */
+        --info: var(--secondary);              /* Info messages, tips, neutral notifications */
+
+        /* ========== SURFACES ========== */
+        --bg-body: var(--white);               /* Main page background */
+        --bg-body-transparent: var(--white-transparent); /* Backdrop overlays, modal backgrounds */
+        --bg-surface: var(--gray-50);          /* Section backgrounds, page containers */
+        --bg-card: var(--white);               /* Card backgrounds, elevated content */
+        --bg-muted: var(--gray-100);           /* IMPROVED: Less harsh - sidebar backgrounds, disabled areas */
+        --bg-hover: var(--gray-50);            /* ADDED: Hover states for list items, buttons */
+        --bg-selected: var(--primary-transparent); /* ADDED: Selected states, active items */
+
+        /* ========== TEXT COLORS ========== */
+        --text-primary: var(--gray-900);       /* Main headings, primary content */
+        --text-secondary: var(--gray-600);     /* Subheadings, secondary content */
+        --text-muted: var(--gray-400);         /* Placeholder text, timestamps, metadata */
+        --text-inverse: var(--white);          /* Text on dark backgrounds */
+        --text-link: var(--secondary);         /* ADDED: Link colors, interactive text */
+        --text-link-hover: var(--primary); /* ADDED: Link hover states */
+        --text-link-active: var(--primary);        /* ADDED: Active navbar links, current page */
+
+        /* ========== BORDERS & DIVIDERS ========== */
+        --border-light: var(--gray-200);       /* Subtle borders, card edges */
+        --border-base: var(--gray-300);        /* IMPROVED: More visible - input borders, standard dividers */
+        --border-dark: var(--gray-600);        /* IMPROVED: Better contrast - emphasized borders */
+        --border-focus: var(--primary);        /* ADDED: Focus rings, active input borders */
+
+        /* ========== TYPOGRAPHY ========== */
+        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        --font-serif: "Crimson Pro", Georgia, serif; /* Editorial content, blog posts, testimonials */
+        --font-mono: "JetBrains Mono", Consolas, monospace; /* Code blocks, technical content, data */
+
+        /* Font Sizes */
+        --text-xs: 0.75rem;                    /* Small labels, captions, metadata */
+        --text-sm: 0.875rem;                   /* Form labels, secondary text */
+        --text-base: 1rem;                     /* Body text, paragraphs */
+        --text-lg: 1.125rem;                   /* Large body text, lead paragraphs */
+        --text-xl: 1.25rem;                    /* Small headings, card titles */
+        --text-2xl: 1.5rem;                    /* Section headings, modal titles */
+        --text-3xl: 1.875rem;                  /* Page headings, major sections */
+        --text-4xl: 2.25rem;                   /* Hero headings, landing page titles */
+        --text-5xl: 3rem;                      /* Large hero text, marketing headlines */
+        --text-6xl: 3.75rem;                   /* Extra large display text */
+
+        /* Font Weights */
+        --font-light: 300;                     /* Light emphasis, subtle text */
+        --font-normal: 400;                    /* Regular body text */
+        --font-medium: 500;                    /* Slightly emphasized text, navigation */
+        --font-semibold: 600;                  /* Buttons, form labels, subheadings */
+        --font-bold: 700;                      /* Headings, important emphasis */
+
+        /* Line Heights */
+        --leading-tight: 1.1;                 /* Headings, compact text */
+        --leading-normal: 1.5;                 /* Body text, readable content */
+        --leading-relaxed: 1.75;               /* Long-form content, blog posts */
+
+        /* ========== SPACING ========== */
+        --space-xs: 0.5rem;                    /* Tight spacing, icon gaps */
+        --space-sm: 0.75rem;                   /* Small padding, compact layouts */
+        --space-md: 1rem;                      /* Standard spacing, button padding */
+        --space-lg: 1.5rem;                    /* Section spacing, card padding */
+        --space-xl: 2rem;                      /* Large gaps, component margins */
+        --space-2xl: 3rem;                     /* Section separations */
+        --space-3xl: 4rem;                     /* Major layout spacing */
+        --space-4xl: 5rem;                     /* Hero sections, large separations */
+
+        /* ========== LAYOUT ========== */
+        --container-sm: 640px;                 /* Small screens, mobile-first content */
+        --container-md: 768px;                 /* Medium screens, tablet layouts */
+        --container-lg: 1024px;                /* Large screens, desktop content */
+        --container-xl: 1280px;                /* Extra large screens, wide layouts */
+        --container-2xl: 1536px;               /* Ultra wide screens, max content width */
+
+        /* Border Radius */
+        --radius-none: 0;                      /* ADDED: Sharp corners, technical interfaces */
+        --radius-sm: 0.25rem;                  /* Small elements, badges, tags */
+        --radius-md: 0.5rem;                   /* Buttons, form inputs, standard cards */
+        --radius-lg: 0.75rem;                  /* Large cards, modals */
+        --radius-xl: 1rem;                     /* Hero sections, prominent elements */
+        --radius-full: 9999px;                 /* Avatars, pills, circular buttons */
+
+        /* ========== SHADOWS ========== */
+        --shadow-sm: 0 1px 2px rgba(44, 69, 97, 0.12); /* IMPROVED: Proper shadow format - subtle elevation */
+        --shadow-md: 0 4px 6px rgba(44, 69, 97, 0.2);  /* IMPROVED: Cards, dropdowns */
+        --shadow-lg: 0 10px 15px rgba(44, 69, 97, 0.31); /* IMPROVED: Modals, large cards */
+        --shadow-xl: 0 20px 25px rgba(44, 69, 97, 0.4); /* ADDED: Maximum elevation */
+        --text-shadow: 0 1px 2px rgba(20, 16, 99, 0.15); /* IMPROVED: Text shadows on images */
+        --button-shadow: inset 0 2px 2px #fff3, inset 0 -2px 2px #0003, 0 2px 2px #00000040; /* IMPROVED: Button shadow */
+        --button-secondary-shadow: inset 0 2px 2px #fff3, inset 0 -2px 2px #0000001a, 0 2px 2px #00000040;
+
+        /* ========== TRANSITIONS ========== */
+        --transition-fast: 0.15s ease;         /* Micro-interactions, hover states */
+        --transition-base: 0.25s ease;         /* Standard animations, state changes */
+        --transition-slow: 0.35s ease;         /* Complex animations, layout changes */
+        --transition-bounce: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); /* Playful animations */
+
+        /* ========== Z-INDEX ========== */
+        --z-base: 1;                           /* ADDED: Base layer reference */
+        --z-navbar: 50;                        /* Navigation bars, sticky headers */
+        --z-dropdown: 100;                     /* Dropdowns, select menus */
+        --z-modal: 200;                        /* Modals, overlays */
+        --z-tooltip: 300;                      /* Tooltips, highest priority elements */
+
+        /* ========== COMPONENT SPECIFIC ========== */
+        /* Form Elements */
+        --input-height: 2.5rem;                /* Standard input height */
+        --input-padding: var(--space-sm) var(--space-md); /* Input padding */
+
+        /* Buttons */
+        --btn-height: 2.5rem;                  /* Button height consistency */
+        --btn-padding: var(--space-sm) var(--space-lg); /* Button padding */
+
+        /* Cards */
+        --card-padding: var(--space-lg);       /* Standard card padding */
+        }
+
+        body {
+            font-family: var(--font-sans);
+            margin: 0;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+        }
+        .container {
+            max-width: var(--container-2xl);
+            margin: var(--space-4xl) auto;
+            padding: var(--space-xl);
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://kit.fontawesome.com/4bf4b74595.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<!--VIEW: public pages-->
+<?php if ($page_category === 'public') { ?>
+<!-- <public-container>  -->
+    <div class="public-container" style="max-width: var(--container-2xl); margin: var(--space-4xl) auto; padding: var(--space-xl);">
+    <!--Navbar-->
+        <!--// Navbar Style-->
+                <style>
+                #navbar {
+                    position: fixed;
+                    top: var(--space-lg);
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: var(--z-navbar);
+                    width: calc(100% - 40px);
+                    max-width: var(--container-xl);
+                    background-color: var(--bg-card);
+                    padding: var(--space-xs) var(--space-xs);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    box-shadow: var(--shadow-sm);
+                    border-radius: var(--radius-lg);
+                    border: 1px solid var(--border-light);
+                    align-items: center;
+                    display: flex;
+                    justify-content: space-between;
+                }
+
+                #navbar .navbar-left {
+                    display: flex;
+                    align-items: center;
+                }
+                #navbar .navbar-left img {
+                    height: 32px;
+                    width: auto;
+                }
+
+                #navbar .navbar-center {
+                    display: flex; align-items: center; gap: var(--space-xs);
+                }
+
+                #navbar .menu-item {
+                    position: relative; display: flex; align-items: center;
+                }
+                #navbar a {
+                    color: var(--text-primary);
+                    text-decoration: none;
+                    padding: var(--space-sm) var(--space-md);
+                    font-weight: var(--font-medium);
+                    font-size: var(--text-sm);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-xs);
+                }
+                #navbar a:hover {
+                    color: var(--text-link-hover);
+                }
+                #navbar a.active {
+                    color: var(--text-link-active);
+                }
+                #navbar a.dropdown::after {
+                    content: "▼";
+                    font-size: var(--text-xs);
+                    color: var(--text-primary);
+                }
+                #navbar a.dropdown:hover::after {
+                    color: var(--text-link-hover);
+                }
+                #navbar .dropdown-menu {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    min-width: 220px;
+                    background: var(--bg-card);
+                    border-radius: var(--radius-md);
+                    padding: var(--space-sm) 0;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--border-light);
+                    opacity: 0;
+                    visibility: hidden;
+                    transform: translateY(-10px);
+                    transition: all var(--transition-base);
+                    z-index: var(--z-dropdown);
+                }
+                #navbar .menu-item:hover .dropdown-menu {
+                    opacity: 1;
+                    visibility: visible;
+                    transform: translateY(0);
+                }
+                #navbar .dropdown-menu a {
+                    padding: 12px 20px;
+                    font-size: var(--text-sm);
+                    color: var(--text-secondary);
+                    display: flex;
+                    align-items: center;
+                    gap: var(--space-sm);
+                    border-radius: 0;
+                }
+                #navbar .dropdown-menu a:hover {
+                    background-color: var(--bg-hover); color: var(--text-link-hover);
+                }
+                #navbar .dropdown-menu a .icon {
+                    width: 32px; height: 32px; border-radius: 8px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 16px; flex-shrink: 0;
+                    background-color: var(--primary-transparent);
+                }
+                #navbar .dropdown-item-title {
+                    font-weight: var(--font-semibold);
+                }
+                #navbar .dropdown-item-description {
+                    font-size: var(--text-sm);
+                    color: var(--text-muted);
+                }
+
+                #navbar .navbar-right {
+                    display: flex; align-items: center; gap: var(--space-xs);
+                }
+                #navbar a.button {
+                    background: var(--primary);
+                    color: var(--white) !important;
+                    text-align: center;
+                    padding: 12px 24px; border-radius: var(--radius-md);
+                    font-weight: var(--font-bold); font-size: 14px;
+                    line-height: var(--leading-relaxed);
+                    padding: var(--space-xs) var(--space-md);
+                    box-shadow: var(--button-shadow);
+                    transition: var(--transition-base);
+                    border: none;
+                }
+                #navbar a.button:hover {
+                    background: var(--primary-dark);
+                    color: var(--white) !important;
+                    transform: translateY(-2px);
+                    box-shadow: var(--button-shadow);
+                }
+
+                @media (max-width: 768px) {
+                    #navbar {
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: var(--space-xs);
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px;
+                    }
+                    #navbar .navbar-left {
+                    order: 1;
+                    }
+                    #navbar .navbar-right {
+                    order: 2;
+                    margin-left: auto;
+                    }
+                    #navbar .navbar-center {
+                    order: 3;
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    gap: var(--space-xs);
+                    margin-top: var(--space-xs);
+                    }
+                }
+
+                @media (max-width: 1024px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px;
+                    }
+                }
+
+                @media (max-width: 1280px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px;
+                    }
+                }
+
+                @media (max-width: 1536px) {
+                    #navbar {
+                    left: 0;
+                    right: 0;
+                    transform: none;
+                    width: auto;
+                    margin: 0 20px;
+                    }
+                }
+                </style>
+        <!--// Navbar HTML-->
+                <nav id="navbar">
+                    <div class="navbar-left">
+                        <a href="/">
+                            <img src="/assets/images/logo.png" alt="Aplikasi Emas Pintar">
+                        </a>
+                    </div>
+
+                    <div class="navbar-center">
+                        <div class="menu-item">
+                            <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="#" class="dropdown">Fitur</a>
+                            <div class="dropdown-menu">
+                                <a href="/home">
+                                    <div class="icon">🔍</div>
+                                    <div>
+                                        <div class="dropdown-item-title">All Features</div>
+                                        <div class="dropdown-item-description">Complete overview</div>
+                                    </div>
+                                </a>
+                                <a href="/about">
+                                    <div class="icon">🧩</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Components</div>
+                                        <div class="dropdown-item-description">Reusable building blocks</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">📋</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Templates</div>
+                                        <div class="dropdown-item-description">Ready-made designs</div>
+                                    </div>
+                                </a>
+                                <a href="#">
+                                    <div class="icon">🔗</div>
+                                    <div>
+                                        <div class="dropdown-item-title">Integrations</div>
+                                        <div class="dropdown-item-description">Connect your tools</div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/about" class="<?= $current_page === 'about' ? 'active' : ''; ?>">About</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/contact" class="<?= $current_page === 'contact' ? 'active' : ''; ?>">Contact</a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="/dashboard" class="<?= $current_page === 'dashboard' ? 'active' : ''; ?>">Dashboard</a>
+                        </div>
+                    </div>
+
+                    <div class="navbar-right">
+                        <!-- No auth buttons needed -->
+                    </div>
+                </nav>
+    <!--Public Page-->
+        <!--Home Page-->
+            <?php switch ($current_page) { case 'home': ?>
+            <!--Hero section-->
+                <!--Hero style-->
+                    <style>
+                    #hero-section {
+                        padding: var(--space-xl) 0 var(--space-xl);
+                        background: linear-gradient(135deg, var(--white) 0%, var(--gray-50) 100%);
+                        background-image: radial-gradient(circle, var(--bg-body-transparent), var(--bg-body)), url('/assets/images/background-square.svg');
+                        background-repeat: repeat;
+                        background-size: auto, 20px 20px;
+                        background-position: center, 0 0;
+                        margin-bottom: var(--space-4xl);
+                        width: 100vw;
+                        margin-left: calc(-50vw + 50%);
+                        position: relative;
+                        margin-top: var(--space-sm);
+                    }
+                    .hero-container {
+                        max-width: var(--container-2xl);
+                        margin: 0 auto;
+                        padding: 0 var(--space-xl);
+                        display: flex;
+                        align-items: center;
+                        gap: var(--space-lg);
+                    }
+                    .hero-content {
+                        flex: 1;
+                        text-align: left;
+                    }
+                    .hero-image {
+                        flex: 1;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                    }
+                    .hero-image img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 12px;
+                        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                    }
+                    .hero-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: var(--space-xs);
+                        font-size: var(--text-sm);
+                        color: var(--text-secondary);
+                        font-weight: var(--font-medium);
+                        margin-bottom: var(--space-md);
+                    }
+                    .hero-title {
+                        font-family: var(--font-serif);
+                        font-size: var(--text-6xl);
+                        font-weight: var(--font-bold);
+                        line-height: var(--leading-tight);
+                        margin: 0 0 var(--space-lg) 0;
+                        color: var(--text-primary);
+                        border: none;
+                        padding: 0;
+                    }
+                    .hero-title-highlight {
+                        color: var(--primary);
+                    }
+                    .hero-subtitle {
+                        font-size: var(--text-xl);
+                        line-height: var(--leading-relaxed);
+                        color: var(--text-secondary);
+                        margin: 0 0 var(--space-2xl) 0;
+                        max-width: var(--container-sm);
+                    }
+                    .hero-cta-buttons {
+                        display: flex;
+                        gap: var(--space-lg);
+                        justify-content: flex-start;
+                        margin-bottom: var(--space-2xl);
+                    }
+                    .hero-cta-primary {
+                        background: var(--primary);
+                        color: var(--white) !important;
+                        text-align: center; align-items: center;
+                        padding: 16px 32px; border-radius: var(--radius-md);
+                        font-weight: var(--font-bold); font-size: var(--text-base);
+                        box-shadow: var(--button-shadow);
+                        transition: var(--transition-base);
+                        border: none;
+                        display: inline-flex;
+                        cursor: pointer;
+                        text-decoration: none;
+                    }
+                    .hero-cta-secondary {
+                        background: var(--white);
+                        color: var(--text-secondary) !important;
+                        padding: 16px 32px; border-radius: var(--radius-md);
+                        font-weight: var(--font-semibold); font-size: var(--text-base);
+                        text-decoration: none;
+                        border: 2px solid var(--border-light);
+                        transition: var(--transition-base);
+                        display: inline-flex;
+                        align-items: center;
+                        box-shadow: var(--button-secondary-shadow);
+                    }
+                    .trusted-by-section {
+                        text-align: left;
+                    }
+                    .trusted-by-title {
+                        font-size: var(--text-sm);
+                        color: var(--text-muted);
+                        font-weight: var(--font-medium);
+                        letter-spacing: 0.05em;
+                        margin-bottom: var(--space-xl);
+                        text-transform: uppercase;
+                    }
+                    .trusted-by-logos {
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-start;
+                        gap: var(--space-2xl);
+                        flex-wrap: wrap;
+                    }
+                    .trusted-by-logo {
+                        height: 0.9rem;
+                        max-width: 100px;
+                        filter: grayscale(1) opacity(0.5);
+                        transition: filter 0.2s ease;
+                    }
+                    .trusted-by-logo:hover {
+                        filter: grayscale(0) opacity(1);
+                    }
+
+                    @media (max-width: 768px) {
+                        .hero-title {
+                            font-size: clamp(2rem, 8vw, var(--text-4xl));
+                            line-height: var(--leading-tight);
+                        }
+                        .hero-subtitle {
+                            font-size: var(--text-lg);
+                            max-width: 100%;
+                        }
+                        .hero-cta-buttons {
+                            flex-direction: column;
+                            align-items: stretch;
+                        }
+                        .hero-cta-primary, .hero-cta-secondary {
+                            width: 80%;
+                            justify-content: center;
+                        }
+                    }
+
+                    @media (max-width: 1024px) {
+                        #hero-section {
+                            padding: var(--space-xl) 0 var(--space-2xl);
+                            margin-top: var(--space-3xl);
+                        }
+                        .hero-container {
+                            flex-direction: column;
+                            align-items: flex-start;
+                            gap: var(--space-xl);
+                        }
+                        .hero-content {
+                            order: 1;
+                            text-align: left;
+                        }
+                        .hero-image {
+                            order: 2;
+                            width: 100%;
+                            margin-top: var(--space-lg);
+                            justify-content: flex-start;
+                        }
+                        .hero-image img {
+                            max-width: 90%;
+                            height: auto;
+                        }
+                        .hero-cta-buttons {
+                            justify-content: flex-start;
+                            gap: var(--space-md);
+                        }
+                        .trusted-by-logos {
+                            justify-content: flex-start;
+                            gap: var(--space-lg);
+                        }
+                    }
+                    </style>
+                <!--Hero HTML-->
+                    <section class="hero-container">
+                    <!-- Left Column: Content -->
+                        <div class="hero-content">
+                        <!-- Badge -->
+                            <div class="hero-badge">
+                                Your SaaS for Everyone
+                            </div>
+                        <!-- Main Heading -->
+                        <h1 class="hero-title">
+                            Tinggalkan <span class="hero-title-highlight">cara manual,</span><br>
+                            majukan usaha emas Anda.
+                        </h1>
+                        <!-- Subtitle -->
+                        <p class="hero-subtitle">
+                            Dari manajemen pelanggan, stock, harga, hingga pembukuan, <br>semua rapi di satu aplikasi.
+                        </p>
+                        <!-- CTA Buttons -->
+                        <div class="hero-cta-buttons">
+                            <a href="/dashboard" class="hero-cta-primary">
+                                Get Started
+                            </a>
+                            <a href="/about" class="hero-cta-secondary">
+                                Learn More
+                            </a>
+                        </div>
+                        <!-- Trusted By Section -->
+                        <div class="trusted-by-section">
+                            <p class="trusted-by-title">
+                                Trusted by
+                            </p>
+                            <div class="trusted-by-logos">
+                                <img src="/assets/images/client-logo.svg" alt="Webflow" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Slack" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Finsweet" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Reddit" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Amazon" class="trusted-by-logo">
+                                <img src="/assets/images/client-logo.svg" alt="Salesforce" class="trusted-by-logo">
+                            </div>
+                        </div>
+                        </div>
+                    <!-- Right Column: Hero Image -->
+                        <div class="hero-image">
+                            <img src="/assets/images/hero-image.webp" alt="Hero Image">
+                        </div>
+                    </section>
+        <!--About Page-->
+            <?php break; case 'about': ?>
+            <!--Top section-->
+                <section class="content" style="margin-top: 100px;">
+                    <h2>About MonoPHP</h2>
+                    <p>MonoPHP is a minimalist PHP framework inspired by the philosophy of keeping things simple and effective. Built with modern web development practices in mind, it provides just enough structure to build robust applications without the bloat.</p>
+                </section>
+        <!--Contact Page-->
+            <?php break; case 'contact': ?>
+            <!--Top section-->
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Contact Us</h2>
+                    <p>Have questions about MonoPHP? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
+                </section>
+        <!--Dashboard Page (No Auth)-->
+            <?php break; case 'dashboard': ?>
+            <!--Dashboard style-->
+                <style>
+                .dashboard-content {
+                    margin-top: 100px;
+                    padding: 2rem;
+                    min-height: calc(100vh - 200px);
+                }
+
+                .dashboard-header {
+                    margin-bottom: 2rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid #e9ecef;
+                }
+
+                .dashboard-header h2 {
+                    margin: 0 0 0.5rem 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.75rem;
+                }
+
+                .dashboard-header p {
+                    margin: 0;
+                    color: #6c757d;
+                    font-size: 1rem;
+                }
+
+                .dashboard-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                    margin-bottom: 2rem;
+                }
+
+                .dashboard-card {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    border: 1px solid #e9ecef;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .dashboard-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+
+                .card-header {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                }
+
+                .card-icon {
+                    width: 40px;
+                    height: 40px;
+                    background: var(--primary);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 1rem;
+                    font-size: 1.2rem;
+                }
+
+                .card-title {
+                    margin: 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                }
+
+                .card-content {
+                    color: #6c757d;
+                    line-height: 1.6;
+                }
+                </style>
+            <!--Dashboard HTML-->
+                <section class="dashboard-content">
+                    <div class="dashboard-header">
+                        <h2>Dashboard</h2>
+                        <p>Welcome to your application dashboard.</p>
+                    </div>
+
+                    <div class="dashboard-cards">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📊</div>
+                                <h3 class="card-title">Analytics</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Track performance metrics and gain insights into your platform.</p>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📋</div>
+                                <h3 class="card-title">Reports</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Generate and view detailed reports for your business.</p>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">⚙️</div>
+                                <h3 class="card-title">Settings</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Configure and customize your application settings.</p>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📁</div>
+                                <h3 class="card-title">Files</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Manage your files and documents in one place.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+        <!--404 Page-->
+            <?php break; default:?>
+            <!--Top section-->
+                <section class="content" style="margin-top: 100px; text-align: center;">
+                    <h2>404 - Page Not Found</h2>
+                    <p>The page you are looking for does not exist.</p>
+                    <a href="/" style="color: var(--primary);">Go back to homepage</a>
+                </section>
+            <?php } ?>
+    <!--Footer-->
+        <!--Footer style-->
+        <!--Footer HTML-->
+    </div>
+<!-- </public-container>  -->
+
+<?php } ?>
+
+</body>
+</html>
+<!--<EOF>-->

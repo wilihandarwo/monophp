@@ -152,17 +152,27 @@ create_project() {
     echo -e "${YELLOW}Select authentication method:${NC}  ${BLUE}(↑↓ to move, Enter to select)${NC}"
     echo ""
 
-    select_option "Email & Password" "Google OAuth"
+    select_option "Email & Password" "Google OAuth" "No Auth"
     auth_choice=$?
 
     echo ""
-    if [[ $auth_choice -eq 0 ]]; then
-        echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
-        cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
-    else
-        echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
-        cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
-    fi
+    case $auth_choice in
+        0)
+            auth_label="Email & Password"
+            echo -e "${YELLOW}➜${NC} Using Email & Password authentication..."
+            cp "$target_dir/resources/index-variant/index-emailpass-sidebar.php" "$target_dir/public/index.php"
+            ;;
+        1)
+            auth_label="Google OAuth"
+            echo -e "${YELLOW}➜${NC} Using Google OAuth authentication..."
+            cp "$target_dir/resources/index-variant/index-googleoauth.php" "$target_dir/public/index.php"
+            ;;
+        2)
+            auth_label="No Auth"
+            echo -e "${YELLOW}➜${NC} Using No Auth (public access)..."
+            cp "$target_dir/resources/index-variant/index-noauth.php" "$target_dir/public/index.php"
+            ;;
+    esac
 
     # Remove variant files (not needed in new projects)
     rm -rf "$target_dir/resources/index-variant"
@@ -199,7 +209,7 @@ create_project() {
     echo ""
     echo -e "${GREEN}✓ Project '${project_name}' created successfully!${NC}"
     echo ""
-    echo -e "  ${GREEN}✓${NC} Authentication: $(if [[ $auth_choice -eq 0 ]]; then echo 'Email & Password'; else echo 'Google OAuth'; fi)"
+    echo -e "  ${GREEN}✓${NC} Authentication: ${auth_label}"
     echo -e "  ${GREEN}✓${NC} Environment file: .env created"
     echo -e "  ${GREEN}✓${NC} Database: database/${project_name}.sqlite (will be created on first run)"
     echo -e "  ${GREEN}✓${NC} Logs folder: logs/"

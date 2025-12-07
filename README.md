@@ -63,6 +63,7 @@ MonoPHP includes a CLI tool to scaffold new projects, similar to `laravel new`.
 
      ▸ Email & Password
        Google OAuth
+       No Auth
 
 5. Start developing:
 

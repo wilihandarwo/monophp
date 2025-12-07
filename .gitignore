@@ -19,6 +19,8 @@ public/assets/uploads/*.php
 .env.staging
 
 # IDE and editor files
+.CLAUDE.md
+.WARP.md
 .vscode/
 .idea/
 *.swp
