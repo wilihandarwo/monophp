@@ -72,7 +72,12 @@ MonoPHP includes a CLI tool to scaffold new projects, similar to `laravel new`.
 
 The generator will:
 - Download the latest MonoPHP template from GitHub
-- Prompt you to choose authentication method (Email/Password or Google OAuth)
+- Prompt you to choose authentication method (Email/Password, Google OAuth, or No Auth)
 - Set SITE_DOMAIN to <project-name>.test
 - Rename the database file to <project-name>.sqlite
 - Initialize a fresh git repository
+
+UPDATING THE CLI:
+To update MonoPHP CLI to the latest version:
+
+   monophp update

@@ -34,17 +34,41 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  new <name>     Create a new MonoPHP project"
+    echo "  update         Update MonoPHP CLI to latest version"
     echo "  help           Show this help message"
     echo "  version        Show version"
     echo ""
     echo "Examples:"
     echo "  monophp new myapp"
-    echo "  monophp new my-awesome-project"
+    echo "  monophp update"
     echo ""
 }
 
 show_version() {
     echo "MonoPHP Generator v${VERSION}"
+}
+
+update_cli() {
+    print_logo
+    echo -e "${YELLOW}➜${NC} Updating MonoPHP CLI..."
+    echo ""
+
+    local install_dir="$HOME/.monophp/bin"
+    local cli_url="https://raw.githubusercontent.com/wilihandarwo/monophp/main/bin/monophp"
+
+    # Download latest version
+    if curl -sL "$cli_url" -o "$install_dir/monophp.tmp"; then
+        chmod +x "$install_dir/monophp.tmp"
+        mv "$install_dir/monophp.tmp" "$install_dir/monophp"
+        echo -e "${GREEN}✓ MonoPHP CLI updated successfully!${NC}"
+        echo ""
+        echo -e "Run ${BLUE}monophp version${NC} to check the new version."
+    else
+        echo -e "${RED}Error: Failed to download update${NC}"
+        rm -f "$install_dir/monophp.tmp"
+        exit 1
+    fi
+    echo ""
 }
 
 # Interactive menu with arrow key navigation
@@ -228,6 +252,9 @@ create_project() {
 case "${1:-}" in
     new)
         create_project "$2"
+        ;;
+    update)
+        update_cli
         ;;
     help|--help|-h)
         show_help
