@@ -12,7 +12,7 @@
 
 // <env>
     // Locate env file
-        const SITE_ENV_FILE = __DIR__ . "/../../.env";
+        const SITE_ENV_FILE = __DIR__ . "/../.env";
     // Function to load env
         function load_env() {
             if (!file_exists(SITE_ENV_FILE)) {
@@ -42,8 +42,8 @@
         const SITE_APP_VERSION = "1.0.0";
         define('SITE_DOMAIN', getenv('SITE_DOMAIN') ?: 'localhost');
     // File location
-        const SITE_DB_FILE = __DIR__ . "/../../database/monophp.sqlite";
-        const SITE_LOG_FILE = __DIR__ . "/../../logs/app.log";
+        const SITE_DB_FILE = __DIR__ . "/../database/monophp.sqlite";
+        const SITE_LOG_FILE = __DIR__ . "/../logs/app.log";
 // </config>
 
 // <session-management>
