@@ -1686,25 +1686,25 @@
     (function() {
         const toggle = document.getElementById('theme-toggle');
         const root = document.documentElement;
-        
+
         // Check local storage or system preference
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
+
         if (savedTheme) {
             root.setAttribute('data-theme', savedTheme);
         } else if (prefersDark) {
             root.setAttribute('data-theme', 'dark');
         } else {
             // Default to dark as per original design if no preference
-            root.setAttribute('data-theme', 'dark'); 
+            root.setAttribute('data-theme', 'dark');
         }
 
         if (toggle) {
             toggle.addEventListener('click', () => {
                 const currentTheme = root.getAttribute('data-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                
+
                 root.setAttribute('data-theme', newTheme);
                 localStorage.setItem('theme', newTheme);
             });

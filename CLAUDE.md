@@ -4,7 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MonoPHP is a single-file PHP web application built with vanilla PHP (no frameworks), vanilla CSS, and jQuery. The entire application logic, routing, views, styles, and scripts are contained in a single `public/index.php` file (~3300 lines).
+MonoPHP is a single-file PHP web application built with vanilla PHP (no frameworks), vanilla CSS, and jQuery. The entire application logic, routing, views, styles, and scripts are contained in a single `public/index.php` file (~1500 lines).
+
+## AI Agent Navigation
+
+This codebase uses AI-optimized markers for efficient navigation. See `AI_CODEBASE_STRATEGY.md` for the full strategy documentation.
+
+**Quick Reference for AI Agents:**
+1. Read the TABLE OF CONTENTS at the top of `index.php` (lines 1-70)
+2. Search for sections: `===[SECTION:name]===`
+3. Search for functions: `@FUNC function_name`
+4. Search for views: `===[VIEW:name]===`
+5. Search for styles: `===[STYLES:name]===`
+
+**Available Markers:**
+- `SECTION:init`, `SECTION:env`, `SECTION:config`, `SECTION:session`, `SECTION:security`
+- `SECTION:error`, `SECTION:database`, `SECTION:helpers`, `SECTION:view-init`
+- `SECTION:post`, `SECTION:routes`, `SECTION:html-head`, `SECTION:scripts`
+- `VIEW:home`, `VIEW:feature`, `VIEW:about`, `VIEW:courses`, `VIEW:testimonial`
+- `VIEW:contact`, `VIEW:login`, `VIEW:signup`, `VIEW:dashboard`, `VIEW:404`
+- `STYLES:variables`, `STYLES:base`, `STYLES:navbar`, `STYLES:hero`, `STYLES:dashboard`
 
 **Tech Stack:**
 - Backend: Vanilla PHP 8+ (procedural style, no OOP)
