@@ -1,11 +1,11 @@
 <?php
 /**
  * ============================================================================
- * MONOPHP - Single File Application
+ * MONOPHP - Single File Index.PHP Framework
  * ============================================================================
- * Version: 1.0.0
- * Total Lines: ~1400
- * Last Structure Update: 2025-01-15
+ * Version: 0.2
+ * Total Lines: ~4000
+ * Last Structure Update: 2026-01-16
  *
  * HOW TO USE THIS FILE (FOR AI AGENTS):
  * -------------------------------------
@@ -18,46 +18,184 @@
  * TABLE OF CONTENTS
  * -----------------
  * @TOC-START
- * SECTION:init        Lines 70-85      Initial settings, strict types
- * SECTION:env         Lines 85-115     Environment file loading
- * SECTION:config      Lines 115-130    Site configuration constants
- * SECTION:session     Lines 130-160    Session management
- * SECTION:security    Lines 160-175    CSRF tokens, CSP headers
- * SECTION:error       Lines 175-290    Error/exception handlers
- * SECTION:database    Lines 290-360    DB connection, migrations
- * SECTION:helpers     Lines 360-400    Utility functions
- * SECTION:view-init   Lines 400-420    View initialization
- * SECTION:post        Lines 420-450    POST request handlers
- * SECTION:routes      Lines 450-490    Route definitions
- * SECTION:html-head   Lines 490-720    DOCTYPE, CSS variables, base styles
- * STYLES:navbar       Lines 720-870    Navigation styles
- * VIEW:home           Lines 900-1220   Homepage with hero
- * VIEW:feature        Lines 1220-1240  Features page
- * VIEW:about          Lines 1240-1260  About page
- * VIEW:courses        Lines 1260-1280  Courses page
- * VIEW:testimonial    Lines 1280-1300  Testimonials page
- * VIEW:contact        Lines 1300-1320  Contact page
- * VIEW:login          Lines 1320-1340  Login page
- * VIEW:signup         Lines 1340-1360  Signup page
- * VIEW:dashboard      Lines 1360-1420  Dashboard page
- * VIEW:404            Lines 1420-1440  404 page
- * SECTION:scripts     Lines 1440-1480  Theme toggle script
+ *
+ * === CORE INFRASTRUCTURE ===
+ * SECTION:init           Lines 66-78       Initial settings, strict types
+ * SECTION:env            Lines 80-112      Environment file loading
+ * SECTION:config         Lines 114-124     Site configuration constants
+ * SECTION:session        Lines 126-150     Session management
+ * SECTION:flash          Lines 152-221     Flash messages
+ * SECTION:security       Lines 223-234     CSRF tokens, CSP headers
+ * SECTION:validation     Lines 236-423     Validation layer
+ * SECTION:error          Lines 425-560     Error/exception handlers
+ *
+ * === DATABASE LAYER ===
+ * SECTION:database       Lines 562-633     DB connection, migrations
+ * SECTION:seeds          Lines 635-777     Database seeding
+ * SECTION:query-builder  Lines 779-1151    Query helpers + soft deletes
+ *
+ * === SECURITY FEATURES ===
+ * SECTION:rate-limit     Lines 1153-1304   Rate limiting
+ * SECTION:password-reset Lines 1306-1438   Password reset tokens
+ * SECTION:remember-me    Lines 1440-1594   Remember me tokens
+ *
+ * === UTILITIES ===
+ * SECTION:logging        Lines 1596-1699   Structured logging
+ * SECTION:cache          Lines 1701-1879   File-based caching
+ * SECTION:api            Lines 1881-2019   JSON API helpers
+ * SECTION:authorization  Lines 2021-2134   Policy-based auth
+ * SECTION:uploads        Lines 2136-2297   File uploads
+ * SECTION:helpers        Lines 2299-2353   Core utility functions
+ * SECTION:form-helpers   Lines 2355-2621   Form generation
+ *
+ * === APPLICATION ===
+ * SECTION:view-init      Lines 2623-2636   View initialization
+ * SECTION:post           Lines 2638-2666   POST request handlers
+ * SECTION:routes         Lines 2668-2719   Route definitions
+ * SECTION:html-head      Lines 2722-3027   DOCTYPE, CSS, base styles
+ *
+ * === VIEWS & STYLES ===
+ * STYLES:navbar          Lines 3035-3187   Navigation styles
+ * VIEW:home              Lines 3228-3544   Homepage with hero
+ * VIEW:feature           Lines 3546-3554   Features page
+ * VIEW:about             Lines 3556-3737   About page
+ * VIEW:courses           Lines 3739-3747   Courses page
+ * VIEW:testimonial       Lines 3749-3757   Testimonials page
+ * VIEW:contact           Lines 3759-3767   Contact page
+ * VIEW:login             Lines 3769-3777   Login page
+ * VIEW:signup            Lines 3779-3787   Signup page
+ * VIEW:dashboard         Lines 3789-3922   Dashboard page
+ * VIEW:404               Lines 3924-3933   404 page
+ * SECTION:scripts        Lines 3943-3974   Theme toggle script
+ *
  * @TOC-END
  *
- * FUNCTION INDEX
- * --------------
+ * FUNCTION INDEX (75+ functions)
+ * ------------------------------
  * @FUNC-INDEX-START
- * @FUNC load_env()              line:95   Load environment variables from .env
- * @FUNC getErrorTypeName()      line:200  Get human-readable error type
- * @FUNC getCodeContext()        line:210  Get code context around error line
- * @FUNC get_db_connection()     line:310  Create PDO database connection
- * @FUNC initialize_database()   line:330  Initialize core database tables
- * @FUNC run_migrations()        line:340  Run pending database migrations
- * @FUNC e()                     line:375  HTML escape for safe output
- * @FUNC sanitize_input()        line:380  Sanitize array input for XSS
- * @FUNC csrf_token()            line:390  Get current CSRF token
- * @FUNC csrf_field()            line:395  Generate CSRF hidden input field
- * @FUNC redirect()              line:400  Redirect to URL and exit
+ *
+ * === Core ===
+ * @FUNC load_env()                    Environment variables from .env
+ * @FUNC getErrorTypeName()            Human-readable error type
+ * @FUNC getCodeContext()              Code context around error line
+ * @FUNC get_db_connection()           PDO database connection
+ * @FUNC initialize_database()         Initialize core tables
+ * @FUNC run_migrations()              Run pending migrations
+ * @FUNC e()                           HTML escape for safe output
+ * @FUNC sanitize_input()              Sanitize array input for XSS
+ * @FUNC csrf_token()                  Get current CSRF token
+ * @FUNC csrf_field()                  Generate CSRF hidden input
+ * @FUNC redirect()                    Redirect to URL and exit
+ *
+ * === Flash Messages ===
+ * @FUNC flash()                       Add flash message to session
+ * @FUNC get_flashes()                 Get and clear flash messages
+ * @FUNC has_flash()                   Check for flash messages
+ * @FUNC flash_render()                Render flash messages as HTML
+ *
+ * === Validation ===
+ * @FUNC validate()                    Validate data against rules
+ * @FUNC validate_rule()               Validate single field/rule
+ * @FUNC validation_errors_flat()      Flatten errors to simple list
+ * @FUNC validation_first_error()      Get first error for field
+ *
+ * === Query Builder ===
+ * @FUNC db_find()                     Find record by ID
+ * @FUNC db_first()                    Find first matching record
+ * @FUNC db_all()                      Get all matching records
+ * @FUNC db_insert()                   Insert record, return ID
+ * @FUNC db_update()                   Update record by ID
+ * @FUNC db_delete()                   Delete record by ID
+ * @FUNC db_count()                    Count matching records
+ * @FUNC db_exists()                   Check if record exists
+ * @FUNC db_query()                    Execute raw SELECT query
+ * @FUNC db_execute()                  Execute raw INSERT/UPDATE/DELETE
+ * @FUNC db_soft_delete()              Soft delete (set deleted_at)
+ * @FUNC db_restore()                  Restore soft-deleted record
+ * @FUNC db_all_with_deleted()         Include soft-deleted records
+ * @FUNC db_only_deleted()             Get only soft-deleted records
+ * @FUNC db_is_deleted()               Check if record is deleted
+ *
+ * === Rate Limiting ===
+ * @FUNC rate_limit()                  Check if action is rate limited
+ * @FUNC rate_limit_hit()              Record an attempt
+ * @FUNC rate_limit_clear()            Clear rate limit for key
+ * @FUNC rate_limit_remaining()        Get remaining attempts
+ * @FUNC rate_limit_retry_after()      Seconds until retry allowed
+ *
+ * === Password Reset ===
+ * @FUNC create_password_reset()       Generate reset token
+ * @FUNC validate_reset_token()        Check if token is valid
+ * @FUNC complete_password_reset()     Reset password with token
+ * @FUNC password_reset_url()          Generate reset URL
+ *
+ * === Remember Me ===
+ * @FUNC create_remember_token()       Create persistent login token
+ * @FUNC validate_remember_token()     Auto-login from cookie
+ * @FUNC clear_remember_token()        Remove token and cookie
+ * @FUNC clear_all_remember_tokens()   Logout everywhere
+ *
+ * === Logging ===
+ * @FUNC log_debug()                   Debug level log
+ * @FUNC log_info()                    Info level log
+ * @FUNC log_warning()                 Warning level log
+ * @FUNC log_error()                   Error level log
+ * @FUNC log_exception()               Log exception with trace
+ * @FUNC log_request()                 Log HTTP request details
+ *
+ * === Caching ===
+ * @FUNC cache_get()                   Get value from cache
+ * @FUNC cache_set()                   Store value in cache
+ * @FUNC cache_has()                   Check if key exists
+ * @FUNC cache_forget()                Remove item from cache
+ * @FUNC cache_flush()                 Clear all cached items
+ * @FUNC cache_remember()              Get or compute and store
+ *
+ * === API ===
+ * @FUNC is_api_request()              Check if API request
+ * @FUNC api_cors()                    Set CORS headers
+ * @FUNC api_response()                Send JSON response
+ * @FUNC api_success()                 Send success response
+ * @FUNC api_error()                   Send error response
+ * @FUNC api_paginate()                Send paginated response
+ * @FUNC api_input()                   Get JSON input from body
+ *
+ * === Authorization ===
+ * @FUNC define_policy()               Register authorization policy
+ * @FUNC can()                         Check if user can do action
+ * @FUNC cannot()                      Check if user cannot do action
+ * @FUNC authorize()                   Authorize or die/redirect
+ * @FUNC is_admin()                    Check if user is admin
+ * @FUNC is_owner()                    Check if user owns resource
+ *
+ * === File Uploads ===
+ * @FUNC upload_file()                 Upload file with validation
+ * @FUNC delete_uploaded_file()        Delete an uploaded file
+ * @FUNC get_upload_url()              Get full URL for file
+ * @FUNC upload_image()                Upload image (convenience)
+ * @FUNC upload_document()             Upload document (convenience)
+ *
+ * === Form Helpers ===
+ * @FUNC form_open()                   Open form with CSRF
+ * @FUNC form_close()                  Close form tag
+ * @FUNC form_text()                   Text input
+ * @FUNC form_email()                  Email input
+ * @FUNC form_password()               Password input
+ * @FUNC form_textarea()               Textarea
+ * @FUNC form_select()                 Select dropdown
+ * @FUNC form_checkbox()               Checkbox input
+ * @FUNC form_radio()                  Radio input
+ * @FUNC form_hidden()                 Hidden input
+ * @FUNC form_submit()                 Submit button
+ * @FUNC form_file()                   File input
+ * @FUNC old()                         Get old input value
+ *
+ * === Database Seeding ===
+ * @FUNC get_seeds()                   Get seed data definitions
+ * @FUNC seed_table()                  Seed a single table
+ * @FUNC run_seeds()                   Run all database seeds
+ * @FUNC is_database_empty()           Check if DB has no users
+ *
  * @FUNC-INDEX-END
  *
  * ============================================================================
@@ -149,6 +287,77 @@
         session_start();
 // ===[/SECTION:session]===
 
+// ===[SECTION:flash]===
+// PURPOSE: Flash messages that persist through redirects (like Rails flash)
+// DEPENDENCIES: SECTION:session
+// EXPORTS: flash(), get_flashes(), has_flash()
+
+    /**
+     * @FUNC flash
+     * @brief Add a flash message to the session
+     * @param string $type Message type (success, error, warning, info)
+     * @param string $message The message content
+     * @return void
+     */
+        function flash(string $type, string $message): void {
+            if (!isset($_SESSION['_flash'])) {
+                $_SESSION['_flash'] = [];
+            }
+            if (!isset($_SESSION['_flash'][$type])) {
+                $_SESSION['_flash'][$type] = [];
+            }
+            $_SESSION['_flash'][$type][] = $message;
+        }
+
+    /**
+     * @FUNC get_flashes
+     * @brief Get all flash messages and clear them from session
+     * @return array Associative array of flash messages by type
+     */
+        function get_flashes(): array {
+            $flashes = $_SESSION['_flash'] ?? [];
+            unset($_SESSION['_flash']);
+            return $flashes;
+        }
+
+    /**
+     * @FUNC has_flash
+     * @brief Check if there are any flash messages (optionally of a specific type)
+     * @param string|null $type Optional message type to check
+     * @return bool True if flash messages exist
+     */
+        function has_flash(?string $type = null): bool {
+            if ($type === null) {
+                return !empty($_SESSION['_flash']);
+            }
+            return !empty($_SESSION['_flash'][$type]);
+        }
+
+    /**
+     * @FUNC flash_render
+     * @brief Render flash messages as HTML
+     * @return string HTML output of flash messages
+     */
+        function flash_render(): string {
+            $flashes = get_flashes();
+            if (empty($flashes)) {
+                return '';
+            }
+
+            $html = '<div class="flash-messages">';
+            foreach ($flashes as $type => $messages) {
+                foreach ($messages as $message) {
+                    $html .= '<div class="flash flash-' . e($type) . '">';
+                    $html .= '<span class="flash-message">' . e($message) . '</span>';
+                    $html .= '<button class="flash-close" onclick="this.parentElement.remove()">&times;</button>';
+                    $html .= '</div>';
+                }
+            }
+            $html .= '</div>';
+            return $html;
+        }
+// ===[/SECTION:flash]===
+
 // ===[SECTION:security]===
 // PURPOSE: Set CSRF token and Content Security Policy headers
 // DEPENDENCIES: SECTION:session (for $_SESSION)
@@ -161,6 +370,195 @@
     // csp
         header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://code.jquery.com https://kit.fontawesome.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://ka-f.fontawesome.com; font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com https://fonts.googleapis.com; img-src 'self' https://*.googleusercontent.com https://i.pravatar.cc data:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://ka-f.fontawesome.com; frame-src 'self' https://www.youtube.com;");
 // ===[/SECTION:security]===
+
+// ===[SECTION:validation]===
+// PURPOSE: Centralized validation layer (like Rails ActiveModel::Validations)
+// DEPENDENCIES: SECTION:database (for unique/exists rules)
+// EXPORTS: validate(), validate_rule()
+
+    /**
+     * @FUNC validate
+     * @brief Validate data against a set of rules
+     * @param array $data Input data to validate
+     * @param array $rules Validation rules (field => 'rule1|rule2:param')
+     * @return array Array of error messages (empty if valid)
+     */
+        function validate(array $data, array $rules): array {
+            $errors = [];
+
+            foreach ($rules as $field => $rule_string) {
+                $rules_list = explode('|', $rule_string);
+                $value = $data[$field] ?? null;
+                $field_label = ucfirst(str_replace('_', ' ', $field));
+
+                foreach ($rules_list as $rule) {
+                    $error = validate_rule($field, $field_label, $value, $rule, $data);
+                    if ($error !== null) {
+                        $errors[$field][] = $error;
+                    }
+                }
+            }
+
+            return $errors;
+        }
+
+    /**
+     * @FUNC validate_rule
+     * @brief Validate a single field against a single rule
+     * @param string $field Field name
+     * @param string $label Human-readable field label
+     * @param mixed $value Field value
+     * @param string $rule Rule string (e.g., 'min:8')
+     * @param array $data Full data array (for confirmed rule)
+     * @return string|null Error message or null if valid
+     */
+        function validate_rule(string $field, string $label, mixed $value, string $rule, array $data): ?string {
+            // Parse rule and parameter
+            $parts = explode(':', $rule, 2);
+            $rule_name = $parts[0];
+            $param = $parts[1] ?? null;
+
+            switch ($rule_name) {
+                case 'required':
+                    if ($value === null || $value === '' || (is_array($value) && empty($value))) {
+                        return "{$label} is required.";
+                    }
+                    break;
+
+                case 'email':
+                    if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                        return "{$label} must be a valid email address.";
+                    }
+                    break;
+
+                case 'min':
+                    if ($value !== null && $value !== '' && strlen((string)$value) < (int)$param) {
+                        return "{$label} must be at least {$param} characters.";
+                    }
+                    break;
+
+                case 'max':
+                    if ($value !== null && $value !== '' && strlen((string)$value) > (int)$param) {
+                        return "{$label} must not exceed {$param} characters.";
+                    }
+                    break;
+
+                case 'numeric':
+                    if ($value !== null && $value !== '' && !is_numeric($value)) {
+                        return "{$label} must be a number.";
+                    }
+                    break;
+
+                case 'integer':
+                    if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_INT)) {
+                        return "{$label} must be an integer.";
+                    }
+                    break;
+
+                case 'confirmed':
+                    $confirmation_field = $field . '_confirmation';
+                    if ($value !== ($data[$confirmation_field] ?? null)) {
+                        return "{$label} confirmation does not match.";
+                    }
+                    break;
+
+                case 'unique':
+                    if ($value !== null && $value !== '' && $param) {
+                        $pdo = get_db_connection();
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$param} WHERE {$field} = :value");
+                        $stmt->execute([':value' => $value]);
+                        if ($stmt->fetchColumn() > 0) {
+                            return "{$label} is already taken.";
+                        }
+                    }
+                    break;
+
+                case 'exists':
+                    if ($value !== null && $value !== '' && $param) {
+                        $pdo = get_db_connection();
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$param} WHERE {$field} = :value");
+                        $stmt->execute([':value' => $value]);
+                        if ($stmt->fetchColumn() == 0) {
+                            return "{$label} does not exist.";
+                        }
+                    }
+                    break;
+
+                case 'in':
+                    if ($value !== null && $value !== '' && $param) {
+                        $allowed = explode(',', $param);
+                        if (!in_array($value, $allowed, true)) {
+                            return "{$label} must be one of: " . implode(', ', $allowed) . ".";
+                        }
+                    }
+                    break;
+
+                case 'regex':
+                    if ($value !== null && $value !== '' && $param) {
+                        if (!preg_match($param, (string)$value)) {
+                            return "{$label} format is invalid.";
+                        }
+                    }
+                    break;
+
+                case 'url':
+                    if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_URL)) {
+                        return "{$label} must be a valid URL.";
+                    }
+                    break;
+
+                case 'alpha':
+                    if ($value !== null && $value !== '' && !ctype_alpha($value)) {
+                        return "{$label} must contain only letters.";
+                    }
+                    break;
+
+                case 'alphanumeric':
+                    if ($value !== null && $value !== '' && !ctype_alnum($value)) {
+                        return "{$label} must contain only letters and numbers.";
+                    }
+                    break;
+
+                case 'date':
+                    if ($value !== null && $value !== '') {
+                        $date = date_parse($value);
+                        if ($date['error_count'] > 0 || !checkdate($date['month'] ?? 0, $date['day'] ?? 0, $date['year'] ?? 0)) {
+                            return "{$label} must be a valid date.";
+                        }
+                    }
+                    break;
+            }
+
+            return null;
+        }
+
+    /**
+     * @FUNC validation_errors_flat
+     * @brief Flatten validation errors array to a simple list
+     * @param array $errors Nested errors array from validate()
+     * @return array Flat array of error messages
+     */
+        function validation_errors_flat(array $errors): array {
+            $flat = [];
+            foreach ($errors as $field_errors) {
+                foreach ($field_errors as $error) {
+                    $flat[] = $error;
+                }
+            }
+            return $flat;
+        }
+
+    /**
+     * @FUNC validation_first_error
+     * @brief Get the first validation error for a field
+     * @param array $errors Validation errors array
+     * @param string $field Field name
+     * @return string|null First error message or null
+     */
+        function validation_first_error(array $errors, string $field): ?string {
+            return $errors[$field][0] ?? null;
+        }
+// ===[/SECTION:validation]===
 
 // ===[SECTION:error]===
 // PURPOSE: Setup custom error and exception handlers for dev/production
@@ -372,6 +770,1670 @@
         run_migrations();
 // ===[/SECTION:database]===
 
+// ===[SECTION:seeds]===
+// PURPOSE: Database seeding for development (like Rails db:seed)
+// DEPENDENCIES: SECTION:database
+// EXPORTS: run_seeds(), seed_table(), get_seeds()
+
+    /**
+     * @FUNC get_seeds
+     * @brief Get seed data definitions
+     * @return array Seed data by table
+     */
+        function get_seeds(): array {
+            return [
+                'users' => [
+                    [
+                        'name' => 'Admin User',
+                        'email' => 'admin@example.com',
+                        'password' => password_hash('password123', PASSWORD_DEFAULT),
+                        'role' => 'admin',
+                        'is_paid' => 1,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ],
+                    [
+                        'name' => 'Demo User',
+                        'email' => 'demo@example.com',
+                        'password' => password_hash('demo123', PASSWORD_DEFAULT),
+                        'role' => 'user',
+                        'is_paid' => 0,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ],
+                    [
+                        'name' => 'Paid User',
+                        'email' => 'paid@example.com',
+                        'password' => password_hash('paid123', PASSWORD_DEFAULT),
+                        'role' => 'user',
+                        'is_paid' => 1,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]
+                ],
+                'businesses' => [
+                    [
+                        'user_id' => 1,
+                        'name' => 'Demo Business',
+                        'description' => 'A sample business for demonstration',
+                        'address' => '123 Main St, City, Country',
+                        'phone' => '+1 234 567 8900',
+                        'email' => 'contact@demobusiness.com',
+                        'website' => 'https://demobusiness.com',
+                        'status' => 'active',
+                        'is_current' => 1,
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]
+                ]
+            ];
+        }
+
+    /**
+     * @FUNC seed_table
+     * @brief Seed a single table with records
+     * @param string $table Table name
+     * @param array $records Array of records to insert
+     * @return int Number of records inserted
+     */
+        function seed_table(string $table, array $records): int {
+            $pdo = get_db_connection();
+            $count = 0;
+
+            foreach ($records as $record) {
+                $columns = array_keys($record);
+                $placeholders = array_map(fn($col) => ":{$col}", $columns);
+
+                $sql = "INSERT INTO {$table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+
+                $params = [];
+                foreach ($record as $column => $value) {
+                    $params[":{$column}"] = $value;
+                }
+
+                try {
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $count++;
+                } catch (PDOException $e) {
+                    // Skip duplicates (unique constraint violations)
+                    if (strpos($e->getMessage(), 'UNIQUE constraint failed') === false) {
+                        throw $e;
+                    }
+                }
+            }
+
+            return $count;
+        }
+
+    /**
+     * @FUNC run_seeds
+     * @brief Run all database seeds
+     * @param bool $fresh If true, clear tables before seeding
+     * @return array Results by table
+     */
+        function run_seeds(bool $fresh = false): array {
+            global $is_development;
+
+            // Only allow seeding in development mode
+            if (!$is_development) {
+                return ['error' => 'Seeding is only allowed in development mode.'];
+            }
+
+            $seeds = get_seeds();
+            $results = [];
+            $pdo = get_db_connection();
+
+            if ($fresh) {
+                // Clear tables in reverse order (to handle foreign keys)
+                $tables = array_keys($seeds);
+                foreach (array_reverse($tables) as $table) {
+                    $pdo->exec("DELETE FROM {$table}");
+                    // Reset auto-increment for SQLite
+                    $pdo->exec("DELETE FROM sqlite_sequence WHERE name = '{$table}'");
+                }
+            }
+
+            foreach ($seeds as $table => $records) {
+                $count = seed_table($table, $records);
+                $results[$table] = $count;
+            }
+
+            return $results;
+        }
+
+    /**
+     * @FUNC is_database_empty
+     * @brief Check if database has no user records
+     * @return bool True if empty
+     */
+        function is_database_empty(): bool {
+            $pdo = get_db_connection();
+            $result = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+            return (int)$result === 0;
+        }
+// ===[/SECTION:seeds]===
+
+// ===[SECTION:query-builder]===
+// PURPOSE: Simple query builder helpers (like Rails ActiveRecord basics)
+// DEPENDENCIES: SECTION:database (for get_db_connection)
+// EXPORTS: db_find(), db_first(), db_all(), db_insert(), db_update(), db_delete(), db_count(), db_exists()
+
+    /**
+     * @FUNC db_find
+     * @brief Find a record by its ID
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return array|null Record data or null if not found
+     */
+        function db_find(string $table, int $id): ?array {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE id = :id LIMIT 1");
+            $stmt->execute([':id' => $id]);
+            $result = $stmt->fetch();
+            return $result ?: null;
+        }
+
+    /**
+     * @FUNC db_first
+     * @brief Find the first record matching conditions
+     * @param string $table Table name
+     * @param array $where Associative array of conditions
+     * @return array|null Record data or null if not found
+     */
+        function db_first(string $table, array $where = []): ?array {
+            $pdo = get_db_connection();
+
+            $sql = "SELECT * FROM {$table}";
+            $params = [];
+
+            if (!empty($where)) {
+                $conditions = [];
+                foreach ($where as $column => $value) {
+                    if ($value === null) {
+                        $conditions[] = "{$column} IS NULL";
+                    } else {
+                        $conditions[] = "{$column} = :{$column}";
+                        $params[":{$column}"] = $value;
+                    }
+                }
+                $sql .= " WHERE " . implode(' AND ', $conditions);
+            }
+
+            $sql .= " LIMIT 1";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $result = $stmt->fetch();
+            return $result ?: null;
+        }
+
+    /**
+     * @FUNC db_all
+     * @brief Get all records matching conditions
+     * @param string $table Table name
+     * @param array $where Associative array of conditions
+     * @param string $order Order by clause (e.g., 'created_at DESC')
+     * @param int $limit Maximum records to return (0 = no limit)
+     * @param int $offset Number of records to skip
+     * @return array Array of records
+     */
+        function db_all(string $table, array $where = [], string $order = '', int $limit = 0, int $offset = 0): array {
+            $pdo = get_db_connection();
+
+            $sql = "SELECT * FROM {$table}";
+            $params = [];
+
+            if (!empty($where)) {
+                $conditions = [];
+                foreach ($where as $column => $value) {
+                    if ($value === null) {
+                        $conditions[] = "{$column} IS NULL";
+                    } else {
+                        $conditions[] = "{$column} = :{$column}";
+                        $params[":{$column}"] = $value;
+                    }
+                }
+                $sql .= " WHERE " . implode(' AND ', $conditions);
+            }
+
+            if ($order !== '') {
+                $sql .= " ORDER BY {$order}";
+            }
+
+            if ($limit > 0) {
+                $sql .= " LIMIT {$limit}";
+                if ($offset > 0) {
+                    $sql .= " OFFSET {$offset}";
+                }
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        }
+
+    /**
+     * @FUNC db_insert
+     * @brief Insert a new record and return its ID
+     * @param string $table Table name
+     * @param array $data Associative array of column => value
+     * @return int The new record's ID
+     */
+        function db_insert(string $table, array $data): int {
+            $pdo = get_db_connection();
+
+            // Auto-add timestamps if columns exist
+            $now = date('Y-m-d H:i:s');
+            if (!isset($data['created_at'])) {
+                $data['created_at'] = $now;
+            }
+            if (!isset($data['updated_at'])) {
+                $data['updated_at'] = $now;
+            }
+
+            $columns = array_keys($data);
+            $placeholders = array_map(fn($col) => ":{$col}", $columns);
+
+            $sql = "INSERT INTO {$table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+
+            $params = [];
+            foreach ($data as $column => $value) {
+                $params[":{$column}"] = $value;
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            return (int) $pdo->lastInsertId();
+        }
+
+    /**
+     * @FUNC db_update
+     * @brief Update a record by ID
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @param array $data Associative array of column => value
+     * @return bool True on success
+     */
+        function db_update(string $table, int $id, array $data): bool {
+            $pdo = get_db_connection();
+
+            // Auto-update timestamp
+            if (!isset($data['updated_at'])) {
+                $data['updated_at'] = date('Y-m-d H:i:s');
+            }
+
+            $sets = [];
+            $params = [':id' => $id];
+
+            foreach ($data as $column => $value) {
+                $sets[] = "{$column} = :{$column}";
+                $params[":{$column}"] = $value;
+            }
+
+            $sql = "UPDATE {$table} SET " . implode(', ', $sets) . " WHERE id = :id";
+
+            $stmt = $pdo->prepare($sql);
+            return $stmt->execute($params);
+        }
+
+    /**
+     * @FUNC db_delete
+     * @brief Delete a record by ID (hard delete)
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return bool True on success
+     */
+        function db_delete(string $table, int $id): bool {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("DELETE FROM {$table} WHERE id = :id");
+            return $stmt->execute([':id' => $id]);
+        }
+
+    /**
+     * @FUNC db_count
+     * @brief Count records matching conditions
+     * @param string $table Table name
+     * @param array $where Associative array of conditions
+     * @return int Number of matching records
+     */
+        function db_count(string $table, array $where = []): int {
+            $pdo = get_db_connection();
+
+            $sql = "SELECT COUNT(*) FROM {$table}";
+            $params = [];
+
+            if (!empty($where)) {
+                $conditions = [];
+                foreach ($where as $column => $value) {
+                    if ($value === null) {
+                        $conditions[] = "{$column} IS NULL";
+                    } else {
+                        $conditions[] = "{$column} = :{$column}";
+                        $params[":{$column}"] = $value;
+                    }
+                }
+                $sql .= " WHERE " . implode(' AND ', $conditions);
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return (int) $stmt->fetchColumn();
+        }
+
+    /**
+     * @FUNC db_exists
+     * @brief Check if a record exists matching conditions
+     * @param string $table Table name
+     * @param array $where Associative array of conditions
+     * @return bool True if record exists
+     */
+        function db_exists(string $table, array $where): bool {
+            return db_count($table, $where) > 0;
+        }
+
+    /**
+     * @FUNC db_query
+     * @brief Execute a raw SQL query with parameters
+     * @param string $sql SQL query with placeholders
+     * @param array $params Associative array of parameters
+     * @return array Array of results
+     */
+        function db_query(string $sql, array $params = []): array {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        }
+
+    /**
+     * @FUNC db_execute
+     * @brief Execute a raw SQL statement (INSERT, UPDATE, DELETE)
+     * @param string $sql SQL statement with placeholders
+     * @param array $params Associative array of parameters
+     * @return int Number of affected rows
+     */
+        function db_execute(string $sql, array $params = []): int {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->rowCount();
+        }
+
+    // ========== SOFT DELETES ==========
+    // Convention: tables with soft deletes have a `deleted_at` column
+
+    /**
+     * @FUNC db_soft_delete
+     * @brief Soft delete a record by setting deleted_at timestamp
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return bool True on success
+     */
+        function db_soft_delete(string $table, int $id): bool {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare("UPDATE {$table} SET deleted_at = :deleted_at, updated_at = :updated_at WHERE id = :id");
+            return $stmt->execute([':id' => $id, ':deleted_at' => $now, ':updated_at' => $now]);
+        }
+
+    /**
+     * @FUNC db_restore
+     * @brief Restore a soft-deleted record
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return bool True on success
+     */
+        function db_restore(string $table, int $id): bool {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("UPDATE {$table} SET deleted_at = NULL, updated_at = :updated_at WHERE id = :id");
+            return $stmt->execute([':id' => $id, ':updated_at' => date('Y-m-d H:i:s')]);
+        }
+
+    /**
+     * @FUNC db_all_with_deleted
+     * @brief Get all records including soft-deleted ones
+     * @param string $table Table name
+     * @param array $where Conditions
+     * @param string $order Order by clause
+     * @param int $limit Limit
+     * @return array Array of records
+     */
+        function db_all_with_deleted(string $table, array $where = [], string $order = '', int $limit = 0): array {
+            $pdo = get_db_connection();
+
+            $sql = "SELECT * FROM {$table}";
+            $params = [];
+
+            if (!empty($where)) {
+                $conditions = [];
+                foreach ($where as $column => $value) {
+                    if ($value === null) {
+                        $conditions[] = "{$column} IS NULL";
+                    } else {
+                        $conditions[] = "{$column} = :{$column}";
+                        $params[":{$column}"] = $value;
+                    }
+                }
+                $sql .= " WHERE " . implode(' AND ', $conditions);
+            }
+
+            if ($order !== '') {
+                $sql .= " ORDER BY {$order}";
+            }
+
+            if ($limit > 0) {
+                $sql .= " LIMIT {$limit}";
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        }
+
+    /**
+     * @FUNC db_only_deleted
+     * @brief Get only soft-deleted records
+     * @param string $table Table name
+     * @param array $where Additional conditions
+     * @return array Array of deleted records
+     */
+        function db_only_deleted(string $table, array $where = []): array {
+            $pdo = get_db_connection();
+
+            $sql = "SELECT * FROM {$table} WHERE deleted_at IS NOT NULL";
+            $params = [];
+
+            if (!empty($where)) {
+                foreach ($where as $column => $value) {
+                    if ($value === null) {
+                        $sql .= " AND {$column} IS NULL";
+                    } else {
+                        $sql .= " AND {$column} = :{$column}";
+                        $params[":{$column}"] = $value;
+                    }
+                }
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        }
+
+    /**
+     * @FUNC db_force_delete
+     * @brief Permanently delete a record (bypasses soft delete)
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return bool True on success
+     */
+        function db_force_delete(string $table, int $id): bool {
+            return db_delete($table, $id);
+        }
+
+    /**
+     * @FUNC db_is_deleted
+     * @brief Check if a record is soft-deleted
+     * @param string $table Table name
+     * @param int $id Record ID
+     * @return bool True if deleted
+     */
+        function db_is_deleted(string $table, int $id): bool {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("SELECT deleted_at FROM {$table} WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $record = $stmt->fetch();
+            return $record && $record['deleted_at'] !== null;
+        }
+// ===[/SECTION:query-builder]===
+
+// ===[SECTION:rate-limit]===
+// PURPOSE: Rate limiting to prevent brute force attacks (like Rails Rack::Attack)
+// DEPENDENCIES: SECTION:database, SECTION:query-builder
+// EXPORTS: rate_limit(), rate_limit_hit(), rate_limit_clear(), rate_limit_cleanup()
+
+    /**
+     * @FUNC rate_limit_init
+     * @brief Create rate_limits table if it doesn't exist
+     * @return void
+     */
+        function rate_limit_init(): void {
+            $pdo = get_db_connection();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                identifier TEXT NOT NULL,
+                attempts INTEGER DEFAULT 1,
+                first_attempt_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                UNIQUE(action, identifier)
+            )");
+        }
+        rate_limit_init();
+
+    /**
+     * @FUNC rate_limit
+     * @brief Check if an action is rate limited
+     * @param string $action Action name (e.g., 'login', 'api')
+     * @param string $identifier Identifier (IP, user_id, etc.)
+     * @param int $max_attempts Maximum attempts allowed
+     * @param int $decay_seconds Time window in seconds
+     * @return bool True if limited (block action), false if allowed
+     */
+        function rate_limit(string $action, string $identifier, int $max_attempts = 5, int $decay_seconds = 300): bool {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+
+            // Clean up expired entries
+            $pdo->prepare("DELETE FROM rate_limits WHERE expires_at < :now")
+                ->execute([':now' => $now]);
+
+            // Check current attempts
+            $stmt = $pdo->prepare("SELECT attempts FROM rate_limits WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([':action' => $action, ':identifier' => $identifier]);
+            $record = $stmt->fetch();
+
+            if ($record && (int)$record['attempts'] >= $max_attempts) {
+                return true; // Rate limited
+            }
+
+            return false; // Not limited
+        }
+
+    /**
+     * @FUNC rate_limit_hit
+     * @brief Record an attempt for rate limiting
+     * @param string $action Action name
+     * @param string $identifier Identifier
+     * @param int $decay_seconds Time window
+     * @return int Current attempt count
+     */
+        function rate_limit_hit(string $action, string $identifier, int $decay_seconds = 300): int {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+            $expires_at = date('Y-m-d H:i:s', time() + $decay_seconds);
+
+            // Try to update existing record
+            $stmt = $pdo->prepare("UPDATE rate_limits SET attempts = attempts + 1, expires_at = :expires_at
+                                   WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([
+                ':action' => $action,
+                ':identifier' => $identifier,
+                ':expires_at' => $expires_at
+            ]);
+
+            if ($stmt->rowCount() === 0) {
+                // Insert new record
+                $stmt = $pdo->prepare("INSERT INTO rate_limits (action, identifier, attempts, first_attempt_at, expires_at)
+                                       VALUES (:action, :identifier, 1, :now, :expires_at)");
+                $stmt->execute([
+                    ':action' => $action,
+                    ':identifier' => $identifier,
+                    ':now' => $now,
+                    ':expires_at' => $expires_at
+                ]);
+                return 1;
+            }
+
+            // Get current count
+            $stmt = $pdo->prepare("SELECT attempts FROM rate_limits WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([':action' => $action, ':identifier' => $identifier]);
+            $record = $stmt->fetch();
+            return (int)($record['attempts'] ?? 0);
+        }
+
+    /**
+     * @FUNC rate_limit_clear
+     * @brief Clear rate limit for an action and identifier
+     * @param string $action Action name
+     * @param string $identifier Identifier
+     * @return void
+     */
+        function rate_limit_clear(string $action, string $identifier): void {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("DELETE FROM rate_limits WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([':action' => $action, ':identifier' => $identifier]);
+        }
+
+    /**
+     * @FUNC rate_limit_remaining
+     * @brief Get remaining attempts before rate limit
+     * @param string $action Action name
+     * @param string $identifier Identifier
+     * @param int $max_attempts Maximum attempts allowed
+     * @return int Remaining attempts
+     */
+        function rate_limit_remaining(string $action, string $identifier, int $max_attempts = 5): int {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("SELECT attempts FROM rate_limits WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([':action' => $action, ':identifier' => $identifier]);
+            $record = $stmt->fetch();
+
+            if (!$record) {
+                return $max_attempts;
+            }
+
+            return max(0, $max_attempts - (int)$record['attempts']);
+        }
+
+    /**
+     * @FUNC rate_limit_retry_after
+     * @brief Get seconds until rate limit expires
+     * @param string $action Action name
+     * @param string $identifier Identifier
+     * @return int Seconds until retry allowed (0 if not limited)
+     */
+        function rate_limit_retry_after(string $action, string $identifier): int {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("SELECT expires_at FROM rate_limits WHERE action = :action AND identifier = :identifier");
+            $stmt->execute([':action' => $action, ':identifier' => $identifier]);
+            $record = $stmt->fetch();
+
+            if (!$record) {
+                return 0;
+            }
+
+            $expires = strtotime($record['expires_at']);
+            $now = time();
+
+            return max(0, $expires - $now);
+        }
+// ===[/SECTION:rate-limit]===
+
+// ===[SECTION:password-reset]===
+// PURPOSE: Password reset token flow (like Rails has_secure_password)
+// DEPENDENCIES: SECTION:database, SECTION:query-builder
+// EXPORTS: password_reset_init(), create_password_reset(), validate_reset_token(), complete_password_reset()
+
+    /**
+     * @FUNC password_reset_init
+     * @brief Create password_resets table if it doesn't exist
+     * @return void
+     */
+        function password_reset_init(): void {
+            $pdo = get_db_connection();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS password_resets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )");
+        }
+        password_reset_init();
+
+    /**
+     * @FUNC create_password_reset
+     * @brief Generate a password reset token for an email
+     * @param string $email User's email address
+     * @param int $expires_hours Hours until token expires (default 1)
+     * @return string|null Token if user exists, null otherwise
+     */
+        function create_password_reset(string $email, int $expires_hours = 1): ?string {
+            // Check if user exists
+            $user = db_first('users', ['email' => $email]);
+            if (!$user) {
+                return null;
+            }
+
+            $pdo = get_db_connection();
+
+            // Delete any existing tokens for this email
+            $stmt = $pdo->prepare("DELETE FROM password_resets WHERE email = :email");
+            $stmt->execute([':email' => $email]);
+
+            // Generate new token
+            $token = bin2hex(random_bytes(32));
+            $expires_at = date('Y-m-d H:i:s', time() + ($expires_hours * 3600));
+
+            // Insert new token
+            $stmt = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (:email, :token, :expires_at)");
+            $stmt->execute([
+                ':email' => $email,
+                ':token' => $token,
+                ':expires_at' => $expires_at
+            ]);
+
+            return $token;
+        }
+
+    /**
+     * @FUNC validate_reset_token
+     * @brief Check if a password reset token is valid
+     * @param string $token The reset token
+     * @return array|null Token record if valid, null otherwise
+     */
+        function validate_reset_token(string $token): ?array {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+
+            $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE token = :token AND expires_at > :now");
+            $stmt->execute([':token' => $token, ':now' => $now]);
+            $record = $stmt->fetch();
+
+            return $record ?: null;
+        }
+
+    /**
+     * @FUNC complete_password_reset
+     * @brief Reset password using a valid token
+     * @param string $token The reset token
+     * @param string $new_password The new password
+     * @return bool True if successful, false otherwise
+     */
+        function complete_password_reset(string $token, string $new_password): bool {
+            $reset = validate_reset_token($token);
+            if (!$reset) {
+                return false;
+            }
+
+            $pdo = get_db_connection();
+
+            // Update user's password
+            $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE users SET password = :password, updated_at = :updated_at WHERE email = :email");
+            $result = $stmt->execute([
+                ':password' => $hashed,
+                ':email' => $reset['email'],
+                ':updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($result) {
+                // Delete the used token
+                $stmt = $pdo->prepare("DELETE FROM password_resets WHERE token = :token");
+                $stmt->execute([':token' => $token]);
+                return true;
+            }
+
+            return false;
+        }
+
+    /**
+     * @FUNC password_reset_url
+     * @brief Generate the password reset URL
+     * @param string $token The reset token
+     * @return string Full reset URL
+     */
+        function password_reset_url(string $token): string {
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? SITE_DOMAIN;
+            return "{$protocol}://{$host}/reset-password?token=" . urlencode($token);
+        }
+
+    /**
+     * @FUNC cleanup_expired_resets
+     * @brief Remove expired password reset tokens
+     * @return int Number of deleted tokens
+     */
+        function cleanup_expired_resets(): int {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare("DELETE FROM password_resets WHERE expires_at < :now");
+            $stmt->execute([':now' => $now]);
+            return $stmt->rowCount();
+        }
+// ===[/SECTION:password-reset]===
+
+// ===[SECTION:remember-me]===
+// PURPOSE: Persistent "remember me" login tokens (like Rails remember_token)
+// DEPENDENCIES: SECTION:database, SECTION:query-builder
+// EXPORTS: remember_me_init(), create_remember_token(), validate_remember_token(), clear_remember_token()
+
+    /**
+     * @FUNC remember_me_init
+     * @brief Create remember_tokens table if it doesn't exist
+     * @return void
+     */
+        function remember_me_init(): void {
+            $pdo = get_db_connection();
+            $pdo->exec("CREATE TABLE IF NOT EXISTS remember_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                expires_at TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )");
+        }
+        remember_me_init();
+
+    /**
+     * @FUNC create_remember_token
+     * @brief Create a persistent login token and set cookie
+     * @param int $user_id User's ID
+     * @param int $days Days until expiry (default 30)
+     * @return string The generated token
+     */
+        function create_remember_token(int $user_id, int $days = 30): string {
+            $pdo = get_db_connection();
+
+            // Generate secure token
+            $token = bin2hex(random_bytes(32));
+            $expires_at = date('Y-m-d H:i:s', time() + ($days * 86400));
+
+            // Store in database
+            $stmt = $pdo->prepare("INSERT INTO remember_tokens (user_id, token, expires_at) VALUES (:user_id, :token, :expires_at)");
+            $stmt->execute([
+                ':user_id' => $user_id,
+                ':token' => $token,
+                ':expires_at' => $expires_at
+            ]);
+
+            // Set cookie
+            $cookie_domain = SITE_DOMAIN === 'localhost' ? '' : SITE_DOMAIN;
+            setcookie(
+                'remember_token',
+                $token,
+                [
+                    'expires' => time() + ($days * 86400),
+                    'path' => '/',
+                    'domain' => $cookie_domain,
+                    'secure' => isset($_SERVER['HTTPS']),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]
+            );
+
+            return $token;
+        }
+
+    /**
+     * @FUNC validate_remember_token
+     * @brief Check cookie and auto-login if valid
+     * @return array|null User data if valid, null otherwise
+     */
+        function validate_remember_token(): ?array {
+            if (!isset($_COOKIE['remember_token'])) {
+                return null;
+            }
+
+            $token = $_COOKIE['remember_token'];
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+
+            // Find valid token
+            $stmt = $pdo->prepare("SELECT user_id FROM remember_tokens WHERE token = :token AND expires_at > :now");
+            $stmt->execute([':token' => $token, ':now' => $now]);
+            $record = $stmt->fetch();
+
+            if (!$record) {
+                // Invalid token, clear cookie
+                clear_remember_token();
+                return null;
+            }
+
+            // Get user data
+            $user = db_find('users', (int)$record['user_id']);
+            if (!$user) {
+                clear_remember_token();
+                return null;
+            }
+
+            return $user;
+        }
+
+    /**
+     * @FUNC clear_remember_token
+     * @brief Remove remember token from database and clear cookie
+     * @return void
+     */
+        function clear_remember_token(): void {
+            if (isset($_COOKIE['remember_token'])) {
+                $token = $_COOKIE['remember_token'];
+
+                // Delete from database
+                $pdo = get_db_connection();
+                $stmt = $pdo->prepare("DELETE FROM remember_tokens WHERE token = :token");
+                $stmt->execute([':token' => $token]);
+            }
+
+            // Clear cookie
+            $cookie_domain = SITE_DOMAIN === 'localhost' ? '' : SITE_DOMAIN;
+            setcookie(
+                'remember_token',
+                '',
+                [
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                    'domain' => $cookie_domain,
+                    'secure' => isset($_SERVER['HTTPS']),
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]
+            );
+        }
+
+    /**
+     * @FUNC clear_all_remember_tokens
+     * @brief Remove all remember tokens for a user (logout everywhere)
+     * @param int $user_id User's ID
+     * @return int Number of deleted tokens
+     */
+        function clear_all_remember_tokens(int $user_id): int {
+            $pdo = get_db_connection();
+            $stmt = $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = :user_id");
+            $stmt->execute([':user_id' => $user_id]);
+            return $stmt->rowCount();
+        }
+
+    /**
+     * @FUNC cleanup_expired_remember_tokens
+     * @brief Remove expired remember tokens
+     * @return int Number of deleted tokens
+     */
+        function cleanup_expired_remember_tokens(): int {
+            $pdo = get_db_connection();
+            $now = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare("DELETE FROM remember_tokens WHERE expires_at < :now");
+            $stmt->execute([':now' => $now]);
+            return $stmt->rowCount();
+        }
+// ===[/SECTION:remember-me]===
+
+// ===[SECTION:logging]===
+// PURPOSE: Structured logging with levels (like Rails.logger)
+// DEPENDENCIES: SECTION:config (for SITE_LOG_FILE)
+// EXPORTS: log_debug(), log_info(), log_warning(), log_error(), log_write()
+
+    /**
+     * @FUNC log_write
+     * @brief Internal log writer with level and context
+     * @param string $level Log level (DEBUG, INFO, WARNING, ERROR)
+     * @param string $message Log message
+     * @param array $context Additional context data
+     * @return void
+     */
+        function log_write(string $level, string $message, array $context = []): void {
+            $log_file = SITE_LOG_FILE;
+            $date = date('Y-m-d H:i:s');
+            $context_str = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_SLASHES) : '';
+
+            $log_entry = "[{$date}] [{$level}] {$message}{$context_str}" . PHP_EOL;
+
+            file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+        }
+
+    /**
+     * @FUNC log_debug
+     * @brief Log debug-level message
+     * @param string $message Log message
+     * @param array $context Additional context
+     * @return void
+     */
+        function log_debug(string $message, array $context = []): void {
+            global $is_development;
+            // Only log debug in development mode
+            if ($is_development) {
+                log_write('DEBUG', $message, $context);
+            }
+        }
+
+    /**
+     * @FUNC log_info
+     * @brief Log info-level message
+     * @param string $message Log message
+     * @param array $context Additional context
+     * @return void
+     */
+        function log_info(string $message, array $context = []): void {
+            log_write('INFO', $message, $context);
+        }
+
+    /**
+     * @FUNC log_warning
+     * @brief Log warning-level message
+     * @param string $message Log message
+     * @param array $context Additional context
+     * @return void
+     */
+        function log_warning(string $message, array $context = []): void {
+            log_write('WARNING', $message, $context);
+        }
+
+    /**
+     * @FUNC log_error
+     * @brief Log error-level message
+     * @param string $message Log message
+     * @param array $context Additional context
+     * @return void
+     */
+        function log_error(string $message, array $context = []): void {
+            log_write('ERROR', $message, $context);
+        }
+
+    /**
+     * @FUNC log_exception
+     * @brief Log an exception with stack trace
+     * @param Throwable $e The exception
+     * @param array $context Additional context
+     * @return void
+     */
+        function log_exception(Throwable $e, array $context = []): void {
+            $context = array_merge($context, [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            log_error($e->getMessage(), $context);
+        }
+
+    /**
+     * @FUNC log_request
+     * @brief Log current HTTP request details
+     * @param array $extra Extra data to include
+     * @return void
+     */
+        function log_request(array $extra = []): void {
+            $context = array_merge([
+                'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
+                'uri' => $_SERVER['REQUEST_URI'] ?? '',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+            ], $extra);
+            log_info('HTTP Request', $context);
+        }
+// ===[/SECTION:logging]===
+
+// ===[SECTION:cache]===
+// PURPOSE: Simple file-based caching (like Rails.cache)
+// DEPENDENCIES: SECTION:config
+// EXPORTS: cache_get(), cache_set(), cache_has(), cache_forget(), cache_flush(), cache_remember()
+
+    // Cache directory
+    define('CACHE_DIR', __DIR__ . '/../cache');
+
+    /**
+     * @FUNC cache_init
+     * @brief Create cache directory if it doesn't exist
+     * @return void
+     */
+        function cache_init(): void {
+            if (!is_dir(CACHE_DIR)) {
+                mkdir(CACHE_DIR, 0755, true);
+            }
+        }
+        cache_init();
+
+    /**
+     * @FUNC cache_key_to_path
+     * @brief Convert cache key to file path
+     * @param string $key Cache key
+     * @return string File path
+     */
+        function cache_key_to_path(string $key): string {
+            $safe_key = preg_replace('/[^a-zA-Z0-9_-]/', '_', $key);
+            return CACHE_DIR . '/' . $safe_key . '.cache';
+        }
+
+    /**
+     * @FUNC cache_get
+     * @brief Get value from cache
+     * @param string $key Cache key
+     * @param mixed $default Default value if not found/expired
+     * @return mixed Cached value or default
+     */
+        function cache_get(string $key, mixed $default = null): mixed {
+            $path = cache_key_to_path($key);
+
+            if (!file_exists($path)) {
+                return $default;
+            }
+
+            $content = file_get_contents($path);
+            $data = unserialize($content);
+
+            // Check expiration
+            if ($data['expires_at'] !== null && time() > $data['expires_at']) {
+                unlink($path);
+                return $default;
+            }
+
+            return $data['value'];
+        }
+
+    /**
+     * @FUNC cache_set
+     * @brief Store value in cache
+     * @param string $key Cache key
+     * @param mixed $value Value to cache
+     * @param int $ttl Time to live in seconds (0 = forever)
+     * @return bool Success
+     */
+        function cache_set(string $key, mixed $value, int $ttl = 3600): bool {
+            $path = cache_key_to_path($key);
+            $expires_at = $ttl > 0 ? time() + $ttl : null;
+
+            $data = [
+                'value' => $value,
+                'expires_at' => $expires_at,
+                'created_at' => time()
+            ];
+
+            return file_put_contents($path, serialize($data), LOCK_EX) !== false;
+        }
+
+    /**
+     * @FUNC cache_has
+     * @brief Check if cache key exists and is not expired
+     * @param string $key Cache key
+     * @return bool True if exists and valid
+     */
+        function cache_has(string $key): bool {
+            $path = cache_key_to_path($key);
+
+            if (!file_exists($path)) {
+                return false;
+            }
+
+            $content = file_get_contents($path);
+            $data = unserialize($content);
+
+            if ($data['expires_at'] !== null && time() > $data['expires_at']) {
+                unlink($path);
+                return false;
+            }
+
+            return true;
+        }
+
+    /**
+     * @FUNC cache_forget
+     * @brief Remove item from cache
+     * @param string $key Cache key
+     * @return bool True if deleted
+     */
+        function cache_forget(string $key): bool {
+            $path = cache_key_to_path($key);
+
+            if (file_exists($path)) {
+                return unlink($path);
+            }
+
+            return false;
+        }
+
+    /**
+     * @FUNC cache_flush
+     * @brief Clear all cached items
+     * @return int Number of items deleted
+     */
+        function cache_flush(): int {
+            $count = 0;
+            $files = glob(CACHE_DIR . '/*.cache');
+
+            foreach ($files as $file) {
+                if (unlink($file)) {
+                    $count++;
+                }
+            }
+
+            return $count;
+        }
+
+    /**
+     * @FUNC cache_remember
+     * @brief Get from cache or compute and store
+     * @param string $key Cache key
+     * @param int $ttl Time to live in seconds
+     * @param callable $callback Function to compute value if not cached
+     * @return mixed Cached or computed value
+     */
+        function cache_remember(string $key, int $ttl, callable $callback): mixed {
+            if (cache_has($key)) {
+                return cache_get($key);
+            }
+
+            $value = $callback();
+            cache_set($key, $value, $ttl);
+            return $value;
+        }
+
+    /**
+     * @FUNC cache_increment
+     * @brief Increment a numeric cache value
+     * @param string $key Cache key
+     * @param int $amount Amount to increment
+     * @return int New value
+     */
+        function cache_increment(string $key, int $amount = 1): int {
+            $value = (int)cache_get($key, 0);
+            $value += $amount;
+            cache_set($key, $value, 0); // No expiration on increment
+            return $value;
+        }
+
+    /**
+     * @FUNC cache_decrement
+     * @brief Decrement a numeric cache value
+     * @param string $key Cache key
+     * @param int $amount Amount to decrement
+     * @return int New value
+     */
+        function cache_decrement(string $key, int $amount = 1): int {
+            return cache_increment($key, -$amount);
+        }
+// ===[/SECTION:cache]===
+
+// ===[SECTION:api]===
+// PURPOSE: JSON API response helpers (like Rails API mode)
+// DEPENDENCIES: SECTION:helpers
+// EXPORTS: api_response(), api_error(), api_paginate(), is_api_request(), api_cors()
+
+    /**
+     * @FUNC is_api_request
+     * @brief Check if current request expects JSON response
+     * @return bool True if API request
+     */
+        function is_api_request(): bool {
+            $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+            $content_type = $_SERVER['CONTENT_TYPE'] ?? '';
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+            return str_contains($accept, 'application/json') ||
+                   str_contains($content_type, 'application/json') ||
+                   str_starts_with($uri, '/api/');
+        }
+
+    /**
+     * @FUNC api_cors
+     * @brief Set CORS headers for API responses
+     * @param string $origin Allowed origin (default: *)
+     * @param array $methods Allowed methods
+     * @return void
+     */
+        function api_cors(string $origin = '*', array $methods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']): void {
+            header("Access-Control-Allow-Origin: {$origin}");
+            header("Access-Control-Allow-Methods: " . implode(', ', $methods));
+            header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+            header("Access-Control-Max-Age: 86400");
+
+            // Handle preflight
+            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+                http_response_code(204);
+                exit();
+            }
+        }
+
+    /**
+     * @FUNC api_response
+     * @brief Send JSON API response
+     * @param mixed $data Response data
+     * @param int $status HTTP status code
+     * @return never
+     */
+        function api_response(mixed $data, int $status = 200): never {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+
+    /**
+     * @FUNC api_success
+     * @brief Send success response with data
+     * @param mixed $data Response data
+     * @param string|null $message Success message
+     * @param int $status HTTP status code
+     * @return never
+     */
+        function api_success(mixed $data = null, ?string $message = null, int $status = 200): never {
+            $response = ['success' => true];
+            if ($message !== null) {
+                $response['message'] = $message;
+            }
+            if ($data !== null) {
+                $response['data'] = $data;
+            }
+            api_response($response, $status);
+        }
+
+    /**
+     * @FUNC api_error
+     * @brief Send error response
+     * @param string $message Error message
+     * @param int $status HTTP status code
+     * @param array $errors Validation errors
+     * @return never
+     */
+        function api_error(string $message, int $status = 400, array $errors = []): never {
+            $response = [
+                'success' => false,
+                'error' => $message
+            ];
+            if (!empty($errors)) {
+                $response['errors'] = $errors;
+            }
+            api_response($response, $status);
+        }
+
+    /**
+     * @FUNC api_paginate
+     * @brief Send paginated response
+     * @param array $data Items for current page
+     * @param int $total Total number of items
+     * @param int $page Current page number
+     * @param int $per_page Items per page
+     * @return never
+     */
+        function api_paginate(array $data, int $total, int $page = 1, int $per_page = 15): never {
+            $last_page = (int)ceil($total / $per_page);
+
+            api_response([
+                'success' => true,
+                'data' => $data,
+                'meta' => [
+                    'current_page' => $page,
+                    'per_page' => $per_page,
+                    'total' => $total,
+                    'last_page' => $last_page,
+                    'from' => ($page - 1) * $per_page + 1,
+                    'to' => min($page * $per_page, $total)
+                ]
+            ]);
+        }
+
+    /**
+     * @FUNC api_input
+     * @brief Get JSON input from request body
+     * @return array Decoded JSON data
+     */
+        function api_input(): array {
+            $json = file_get_contents('php://input');
+            return json_decode($json, true) ?? [];
+        }
+
+    /**
+     * @FUNC api_auth_check
+     * @brief Check API authentication (session-based)
+     * @return void Dies with 401 if not authenticated
+     */
+        function api_auth_check(): void {
+            if (!isset($_SESSION['user'])) {
+                api_error('Unauthorized', 401);
+            }
+        }
+// ===[/SECTION:api]===
+
+// ===[SECTION:authorization]===
+// PURPOSE: Policy-based authorization (like Rails Pundit/CanCanCan)
+// DEPENDENCIES: SECTION:helpers (for get_user)
+// EXPORTS: define_policy(), can(), cannot(), authorize()
+
+    // Global policies storage
+    $GLOBALS['_policies'] = [];
+
+    /**
+     * @FUNC define_policy
+     * @brief Register an authorization policy
+     * @param string $ability Ability name (e.g., 'business.edit')
+     * @param callable $callback Function(user, ...args) returning bool
+     * @return void
+     */
+        function define_policy(string $ability, callable $callback): void {
+            $GLOBALS['_policies'][$ability] = $callback;
+        }
+
+    /**
+     * @FUNC can
+     * @brief Check if current user can perform ability
+     * @param string $ability Ability name
+     * @param mixed ...$args Additional arguments for policy
+     * @return bool True if authorized
+     */
+        function can(string $ability, mixed ...$args): bool {
+            // Get current user
+            $user = $_SESSION['user'] ?? null;
+
+            // No user = no permissions
+            if (!$user) {
+                return false;
+            }
+
+            // Check if policy exists
+            if (!isset($GLOBALS['_policies'][$ability])) {
+                // No policy defined = denied by default
+                return false;
+            }
+
+            // Call the policy with user and arguments
+            return (bool)call_user_func($GLOBALS['_policies'][$ability], $user, ...$args);
+        }
+
+    /**
+     * @FUNC cannot
+     * @brief Check if current user cannot perform ability
+     * @param string $ability Ability name
+     * @param mixed ...$args Additional arguments for policy
+     * @return bool True if NOT authorized
+     */
+        function cannot(string $ability, mixed ...$args): bool {
+            return !can($ability, ...$args);
+        }
+
+    /**
+     * @FUNC authorize
+     * @brief Authorize or die/redirect with error
+     * @param string $ability Ability name
+     * @param mixed ...$args Additional arguments for policy
+     * @return void Dies if not authorized
+     */
+        function authorize(string $ability, mixed ...$args): void {
+            if (cannot($ability, ...$args)) {
+                if (is_api_request()) {
+                    api_error('Forbidden', 403);
+                } else {
+                    flash('error', 'You are not authorized to perform this action.');
+                    redirect('/');
+                }
+            }
+        }
+
+    /**
+     * @FUNC is_admin
+     * @brief Check if current user is admin
+     * @return bool True if admin
+     */
+        function is_admin(): bool {
+            $user = $_SESSION['user'] ?? null;
+            return $user && ($user['role'] ?? '') === 'admin';
+        }
+
+    /**
+     * @FUNC is_owner
+     * @brief Check if current user owns a resource
+     * @param array $resource Resource with user_id field
+     * @return bool True if owner
+     */
+        function is_owner(array $resource): bool {
+            $user = $_SESSION['user'] ?? null;
+            return $user && isset($resource['user_id']) && (int)$user['id'] === (int)$resource['user_id'];
+        }
+
+    // ========== DEFAULT POLICIES ==========
+    // These can be overridden or extended
+
+    // Admin can do anything
+    define_policy('admin.*', fn($user) => ($user['role'] ?? '') === 'admin');
+
+    // Business policies
+    define_policy('business.view', fn($user, $business) =>
+        (int)$user['id'] === (int)$business['user_id'] || ($user['role'] ?? '') === 'admin'
+    );
+
+    define_policy('business.edit', fn($user, $business) =>
+        (int)$user['id'] === (int)$business['user_id']
+    );
+
+    define_policy('business.delete', fn($user, $business) =>
+        (int)$user['id'] === (int)$business['user_id'] || ($user['role'] ?? '') === 'admin'
+    );
+// ===[/SECTION:authorization]===
+
+// ===[SECTION:uploads]===
+// PURPOSE: File upload handling (like Rails ActiveStorage)
+// DEPENDENCIES: SECTION:helpers
+// EXPORTS: upload_file(), delete_uploaded_file(), get_upload_url()
+
+    // Upload directory
+    define('UPLOAD_DIR', __DIR__ . '/uploads');
+
+    /**
+     * @FUNC upload_init
+     * @brief Create uploads directory if it doesn't exist
+     * @return void
+     */
+        function upload_init(): void {
+            if (!is_dir(UPLOAD_DIR)) {
+                mkdir(UPLOAD_DIR, 0755, true);
+            }
+        }
+        upload_init();
+
+    /**
+     * @FUNC upload_file
+     * @brief Upload a file with validation
+     * @param array $file $_FILES array element
+     * @param string $directory Subdirectory within uploads
+     * @param array $allowed_extensions Allowed file extensions
+     * @param int $max_size Maximum file size in bytes
+     * @return string|array Path on success, errors array on failure
+     */
+        function upload_file(
+            array $file,
+            string $directory = '',
+            array $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf'],
+            int $max_size = 5242880 // 5MB
+        ): string|array {
+            $errors = [];
+
+            // Check for upload errors
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                return ['Upload failed: ' . upload_error_message($file['error'])];
+            }
+
+            // Check file size
+            if ($file['size'] > $max_size) {
+                $max_mb = round($max_size / 1048576, 1);
+                return ["File size exceeds maximum allowed ({$max_mb}MB)."];
+            }
+
+            // Get and validate extension
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($extension, $allowed_extensions)) {
+                return ['File type not allowed. Allowed: ' . implode(', ', $allowed_extensions)];
+            }
+
+            // Create target directory
+            $target_dir = UPLOAD_DIR;
+            if ($directory !== '') {
+                $target_dir .= '/' . trim($directory, '/');
+                if (!is_dir($target_dir)) {
+                    mkdir($target_dir, 0755, true);
+                }
+            }
+
+            // Generate unique filename
+            $filename = bin2hex(random_bytes(16)) . '.' . $extension;
+            $target_path = $target_dir . '/' . $filename;
+
+            // Move uploaded file
+            if (!move_uploaded_file($file['tmp_name'], $target_path)) {
+                return ['Failed to save uploaded file.'];
+            }
+
+            // Return relative path from uploads
+            $relative_path = '/uploads';
+            if ($directory !== '') {
+                $relative_path .= '/' . trim($directory, '/');
+            }
+            $relative_path .= '/' . $filename;
+
+            return $relative_path;
+        }
+
+    /**
+     * @FUNC upload_error_message
+     * @brief Get human-readable upload error message
+     * @param int $error_code PHP upload error code
+     * @return string Error message
+     */
+        function upload_error_message(int $error_code): string {
+            return match($error_code) {
+                UPLOAD_ERR_INI_SIZE => 'File exceeds server upload limit.',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds form upload limit.',
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded.',
+                UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder.',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+                UPLOAD_ERR_EXTENSION => 'Upload blocked by extension.',
+                default => 'Unknown upload error.'
+            };
+        }
+
+    /**
+     * @FUNC delete_uploaded_file
+     * @brief Delete an uploaded file
+     * @param string $path Relative path from uploads
+     * @return bool True if deleted
+     */
+        function delete_uploaded_file(string $path): bool {
+            // Convert relative path to absolute
+            $absolute_path = __DIR__ . $path;
+
+            // Security check: ensure path is within uploads
+            $real_path = realpath($absolute_path);
+            $upload_real = realpath(UPLOAD_DIR);
+
+            if ($real_path === false || !str_starts_with($real_path, $upload_real)) {
+                return false;
+            }
+
+            if (file_exists($real_path)) {
+                return unlink($real_path);
+            }
+
+            return false;
+        }
+
+    /**
+     * @FUNC get_upload_url
+     * @brief Get full URL for uploaded file
+     * @param string $path Relative path
+     * @return string Full URL
+     */
+        function get_upload_url(string $path): string {
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? SITE_DOMAIN;
+            return "{$protocol}://{$host}{$path}";
+        }
+
+    /**
+     * @FUNC upload_image
+     * @brief Upload an image file (convenience wrapper)
+     * @param array $file $_FILES array element
+     * @param string $directory Subdirectory
+     * @param int $max_size Maximum size
+     * @return string|array Path or errors
+     */
+        function upload_image(array $file, string $directory = 'images', int $max_size = 5242880): string|array {
+            return upload_file($file, $directory, ['jpg', 'jpeg', 'png', 'gif', 'webp'], $max_size);
+        }
+
+    /**
+     * @FUNC upload_document
+     * @brief Upload a document file (convenience wrapper)
+     * @param array $file $_FILES array element
+     * @param string $directory Subdirectory
+     * @param int $max_size Maximum size
+     * @return string|array Path or errors
+     */
+        function upload_document(array $file, string $directory = 'documents', int $max_size = 10485760): string|array {
+            return upload_file($file, $directory, ['pdf', 'doc', 'docx', 'txt', 'csv', 'xlsx'], $max_size);
+        }
+// ===[/SECTION:uploads]===
+
 // ===[SECTION:helpers]===
 // PURPOSE: Utility functions for HTML escaping, input sanitization, CSRF, redirects
 // DEPENDENCIES: SECTION:session (for $_SESSION)
@@ -427,6 +2489,274 @@
             exit();
         }
 // ===[/SECTION:helpers]===
+
+// ===[SECTION:form-helpers]===
+// PURPOSE: Form generation helpers (like Rails form_with, form_for)
+// DEPENDENCIES: SECTION:helpers (for e(), csrf_field())
+// EXPORTS: form_open(), form_close(), form_text(), form_email(), form_password(), etc.
+
+    /**
+     * @FUNC form_open
+     * @brief Open a form tag with CSRF token
+     * @param string $action Form action URL
+     * @param string $method HTTP method (post, get)
+     * @param array $attrs Additional attributes
+     * @return string Opening form tag with CSRF field
+     */
+        function form_open(string $action = '', string $method = 'post', array $attrs = []): string {
+            $attrs_str = form_attrs($attrs);
+            $html = "<form action=\"" . e($action) . "\" method=\"" . e($method) . "\"{$attrs_str}>";
+            if (strtolower($method) === 'post') {
+                $html .= csrf_field();
+            }
+            return $html;
+        }
+
+    /**
+     * @FUNC form_close
+     * @brief Close a form tag
+     * @return string Closing form tag
+     */
+        function form_close(): string {
+            return '</form>';
+        }
+
+    /**
+     * @FUNC form_attrs
+     * @brief Convert attributes array to HTML string
+     * @param array $attrs Attributes array
+     * @return string HTML attributes string
+     */
+        function form_attrs(array $attrs): string {
+            if (empty($attrs)) return '';
+
+            $parts = [];
+            foreach ($attrs as $key => $value) {
+                if ($value === true) {
+                    $parts[] = e($key);
+                } elseif ($value !== false && $value !== null) {
+                    $parts[] = e($key) . '="' . e($value) . '"';
+                }
+            }
+            return $parts ? ' ' . implode(' ', $parts) : '';
+        }
+
+    /**
+     * @FUNC form_label
+     * @brief Generate a label element
+     * @param string $for For attribute (input id)
+     * @param string $text Label text
+     * @param array $attrs Additional attributes
+     * @return string Label HTML
+     */
+        function form_label(string $for, string $text, array $attrs = []): string {
+            $attrs_str = form_attrs($attrs);
+            return "<label for=\"" . e($for) . "\"{$attrs_str}>" . e($text) . "</label>";
+        }
+
+    /**
+     * @FUNC form_text
+     * @brief Generate a text input
+     * @param string $name Input name
+     * @param string $value Input value
+     * @param array $attrs Additional attributes
+     * @return string Input HTML
+     */
+        function form_text(string $name, string $value = '', array $attrs = []): string {
+            $attrs = array_merge(['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value], $attrs);
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_email
+     * @brief Generate an email input
+     * @param string $name Input name
+     * @param string $value Input value
+     * @param array $attrs Additional attributes
+     * @return string Input HTML
+     */
+        function form_email(string $name, string $value = '', array $attrs = []): string {
+            $attrs = array_merge(['type' => 'email', 'name' => $name, 'id' => $name, 'value' => $value], $attrs);
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_password
+     * @brief Generate a password input
+     * @param string $name Input name
+     * @param array $attrs Additional attributes
+     * @return string Input HTML
+     */
+        function form_password(string $name, array $attrs = []): string {
+            $attrs = array_merge(['type' => 'password', 'name' => $name, 'id' => $name], $attrs);
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_number
+     * @brief Generate a number input
+     * @param string $name Input name
+     * @param string $value Input value
+     * @param array $attrs Additional attributes
+     * @return string Input HTML
+     */
+        function form_number(string $name, string $value = '', array $attrs = []): string {
+            $attrs = array_merge(['type' => 'number', 'name' => $name, 'id' => $name, 'value' => $value], $attrs);
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_textarea
+     * @brief Generate a textarea
+     * @param string $name Textarea name
+     * @param string $value Textarea content
+     * @param array $attrs Additional attributes
+     * @return string Textarea HTML
+     */
+        function form_textarea(string $name, string $value = '', array $attrs = []): string {
+            $attrs = array_merge(['name' => $name, 'id' => $name], $attrs);
+            $attrs_str = form_attrs($attrs);
+            return "<textarea{$attrs_str}>" . e($value) . "</textarea>";
+        }
+
+    /**
+     * @FUNC form_select
+     * @brief Generate a select dropdown
+     * @param string $name Select name
+     * @param array $options Options array (value => label)
+     * @param string|array|null $selected Selected value(s)
+     * @param array $attrs Additional attributes
+     * @return string Select HTML
+     */
+        function form_select(string $name, array $options, $selected = null, array $attrs = []): string {
+            $attrs = array_merge(['name' => $name, 'id' => $name], $attrs);
+            $attrs_str = form_attrs($attrs);
+
+            $html = "<select{$attrs_str}>";
+            foreach ($options as $value => $label) {
+                $is_selected = is_array($selected) ? in_array($value, $selected) : ($value == $selected);
+                $selected_attr = $is_selected ? ' selected' : '';
+                $html .= "<option value=\"" . e($value) . "\"{$selected_attr}>" . e($label) . "</option>";
+            }
+            $html .= "</select>";
+
+            return $html;
+        }
+
+    /**
+     * @FUNC form_checkbox
+     * @brief Generate a checkbox input
+     * @param string $name Input name
+     * @param string $value Checkbox value
+     * @param bool $checked Whether checked
+     * @param array $attrs Additional attributes
+     * @return string Checkbox HTML
+     */
+        function form_checkbox(string $name, string $value = '1', bool $checked = false, array $attrs = []): string {
+            $attrs = array_merge(['type' => 'checkbox', 'name' => $name, 'id' => $name, 'value' => $value], $attrs);
+            if ($checked) {
+                $attrs['checked'] = true;
+            }
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_radio
+     * @brief Generate a radio input
+     * @param string $name Input name
+     * @param string $value Radio value
+     * @param bool $checked Whether checked
+     * @param array $attrs Additional attributes
+     * @return string Radio HTML
+     */
+        function form_radio(string $name, string $value, bool $checked = false, array $attrs = []): string {
+            $id = $name . '_' . $value;
+            $attrs = array_merge(['type' => 'radio', 'name' => $name, 'id' => $id, 'value' => $value], $attrs);
+            if ($checked) {
+                $attrs['checked'] = true;
+            }
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC form_hidden
+     * @brief Generate a hidden input
+     * @param string $name Input name
+     * @param string $value Input value
+     * @return string Hidden input HTML
+     */
+        function form_hidden(string $name, string $value): string {
+            return "<input type=\"hidden\" name=\"" . e($name) . "\" value=\"" . e($value) . "\">";
+        }
+
+    /**
+     * @FUNC form_submit
+     * @brief Generate a submit button
+     * @param string $text Button text
+     * @param array $attrs Additional attributes
+     * @return string Submit button HTML
+     */
+        function form_submit(string $text = 'Submit', array $attrs = []): string {
+            $attrs = array_merge(['type' => 'submit'], $attrs);
+            $attrs_str = form_attrs($attrs);
+            return "<button{$attrs_str}>" . e($text) . "</button>";
+        }
+
+    /**
+     * @FUNC form_button
+     * @brief Generate a button element
+     * @param string $text Button text
+     * @param array $attrs Additional attributes
+     * @return string Button HTML
+     */
+        function form_button(string $text, array $attrs = []): string {
+            $attrs = array_merge(['type' => 'button'], $attrs);
+            $attrs_str = form_attrs($attrs);
+            return "<button{$attrs_str}>" . e($text) . "</button>";
+        }
+
+    /**
+     * @FUNC form_file
+     * @brief Generate a file input
+     * @param string $name Input name
+     * @param array $attrs Additional attributes
+     * @return string File input HTML
+     */
+        function form_file(string $name, array $attrs = []): string {
+            $attrs = array_merge(['type' => 'file', 'name' => $name, 'id' => $name], $attrs);
+            return "<input" . form_attrs($attrs) . ">";
+        }
+
+    /**
+     * @FUNC old
+     * @brief Get old input value from session
+     * @param string $field Field name
+     * @param mixed $default Default value if not found
+     * @return mixed Old value or default
+     */
+        function old(string $field, mixed $default = ''): mixed {
+            return $_SESSION['_old_input'][$field] ?? $default;
+        }
+
+    /**
+     * @FUNC flash_old_input
+     * @brief Store input for old() function (call before redirect)
+     * @param array $data Input data to store
+     * @return void
+     */
+        function flash_old_input(array $data): void {
+            $_SESSION['_old_input'] = $data;
+        }
+
+    /**
+     * @FUNC clear_old_input
+     * @brief Clear old input from session
+     * @return void
+     */
+        function clear_old_input(): void {
+            unset($_SESSION['_old_input']);
+        }
+// ===[/SECTION:form-helpers]===
 
 // ===[SECTION:view-init]===
 // PURPOSE: Initialize view-related variables for rendering
@@ -760,6 +3090,73 @@
             margin: var(--space-4xl) auto;
             padding: var(--space-xl);
         }
+
+        /* ===[STYLES:flash]=== */
+        /* PURPOSE: Flash message styles for notifications */
+        .flash-messages {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: var(--z-tooltip);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            max-width: 400px;
+        }
+        .flash {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-md) var(--space-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            animation: flash-in 0.3s ease-out;
+        }
+        @keyframes flash-in {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .flash-message {
+            flex: 1;
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+        }
+        .flash-close {
+            background: transparent;
+            border: none;
+            font-size: var(--text-xl);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity var(--transition-fast);
+            margin-left: var(--space-md);
+            line-height: 1;
+        }
+        .flash-close:hover {
+            opacity: 1;
+        }
+        .flash-success {
+            background: #10B981;
+            color: #ffffff;
+        }
+        .flash-error {
+            background: #EF4444;
+            color: #ffffff;
+        }
+        .flash-warning {
+            background: #F59E0B;
+            color: #ffffff;
+        }
+        .flash-info {
+            background: var(--primary);
+            color: #ffffff;
+        }
+        /* ===[/STYLES:flash]=== */
         /* ===[/STYLES:base]=== */
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -767,6 +3164,7 @@
 </head>
 <!-- ===[/SECTION:html-head]=== -->
 <body>
+<?php echo flash_render(); ?>
 
 <!--VIEW: public pages-->
 <?php if ($page_category === 'public') { ?>
@@ -1686,25 +4084,25 @@
     (function() {
         const toggle = document.getElementById('theme-toggle');
         const root = document.documentElement;
-        
+
         // Check local storage or system preference
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
+
         if (savedTheme) {
             root.setAttribute('data-theme', savedTheme);
         } else if (prefersDark) {
             root.setAttribute('data-theme', 'dark');
         } else {
             // Default to dark as per original design if no preference
-            root.setAttribute('data-theme', 'dark'); 
+            root.setAttribute('data-theme', 'dark');
         }
 
         if (toggle) {
             toggle.addEventListener('click', () => {
                 const currentTheme = root.getAttribute('data-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                
+
                 root.setAttribute('data-theme', newTheme);
                 localStorage.setItem('theme', newTheme);
             });
