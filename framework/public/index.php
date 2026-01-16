@@ -2809,11 +2809,16 @@
 // EXPORTS: $route_categories, $current_page, $page_category, $page_title
 //
 // ROUTE INDEX:
-// @ROUTE /              => VIEW:home        (public) - Hero landing
-// @ROUTE /features      => VIEW:features    (public) - Framework features
-// @ROUTE /docs          => VIEW:docs        (public) - Getting started
-// @ROUTE /about         => VIEW:about       (public) - About MonoPHP
-// @ROUTE /demo          => VIEW:demo        (public) - Live demo gallery
+// @ROUTE /              => VIEW:home        (public)
+// @ROUTE /home          => VIEW:home        (public)
+// @ROUTE /feature       => VIEW:feature     (public)
+// @ROUTE /about         => VIEW:about       (public)
+// @ROUTE /courses       => VIEW:courses     (public)
+// @ROUTE /testimonial   => VIEW:testimonial (public)
+// @ROUTE /contact       => VIEW:contact     (public)
+// @ROUTE /login         => VIEW:login       (public)
+// @ROUTE /signup        => VIEW:signup      (public)
+// @ROUTE /dashboard     => VIEW:dashboard   (public)
     // File path
         $request_uri = $_SERVER['REQUEST_URI'];
         $path = parse_url($request_uri, PHP_URL_PATH);
@@ -2823,11 +2828,16 @@
     // [name of url / slug] => ['page' => [title of switch case logic in html], 'title' => 'Page Title'],
         $route_categories = [
             'public' => [
-                '' => ['page' => 'home', 'title' => 'MonoPHP - Single-File PHP Framework'],
-                'home' => ['page' => 'home', 'title' => 'MonoPHP - Single-File PHP Framework'],
-                'features' => ['page' => 'features', 'title' => 'Features - MonoPHP'],
-                'docs' => ['page' => 'docs', 'title' => 'Documentation - MonoPHP'],
-                'about' => ['page' => 'about', 'title' => 'About - MonoPHP'],
+                '' => ['page' => 'home', 'title' => 'Masco - Fitness App'],
+                'home' => ['page' => 'home', 'title' => 'Masco - Fitness App'],
+                'feature' => ['page' => 'feature', 'title' => 'Features - Masco'],
+                'about' => ['page' => 'about', 'title' => 'About - Masco'],
+                'courses' => ['page' => 'courses', 'title' => 'Courses - Masco'],
+                'testimonial' => ['page' => 'testimonial', 'title' => 'Testimonials - Masco'],
+                'contact' => ['page' => 'contact', 'title' => 'Contact - Masco'],
+                'login' => ['page' => 'login', 'title' => 'Login - Masco'],
+                'signup' => ['page' => 'signup', 'title' => 'Sign Up - Masco'],
+                'dashboard' => ['page' => 'dashboard', 'title' => 'Dashboard - Masco'],
             ]
         ];
 
@@ -3333,11 +3343,11 @@
                     </div>
 
                     <div class="navbar-center">
-                        <a href="/features" class="<?= $current_page === 'features' ? 'active' : ''; ?>">Features</a>
-                        <a href="/docs" class="<?= $current_page === 'docs' ? 'active' : ''; ?>">Docs</a>
-                        <a href="/demo/" class="<?= $current_page === 'demo' ? 'active' : ''; ?>">Demo</a>
+                        <a href="/home" class="<?= $current_page === 'home' ? 'active' : ''; ?>">Home</a>
+                        <a href="/feature" class="<?= $current_page === 'feature' ? 'active' : ''; ?>">Feature</a>
                         <a href="/about" class="<?= $current_page === 'about' ? 'active' : ''; ?>">About</a>
-                        <a href="https://github.com/anthropics/monophp" target="_blank" rel="noopener">GitHub</a>
+                        <a href="/courses" class="<?= $current_page === 'courses' ? 'active' : ''; ?>">Courses</a>
+                        <a href="/testimonial" class="<?= $current_page === 'testimonial' ? 'active' : ''; ?>">Testimonial</a>
                     </div>
 
                     <div class="navbar-right">
@@ -3348,8 +3358,8 @@
                             <!-- Moon Icon -->
                             <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         </button>
-                        <a href="/docs" class="login-link">Get Started</a>
-                        <a href="/demo/" class="btn">Try Demo</a>
+                        <a href="/login" class="login-link">Login</a>
+                        <a href="/signup" class="btn">Sign up free</a>
                     </div>
                 </nav>
     <!--Public Page-->
@@ -3607,65 +3617,63 @@
                             <div class="hero-content">
                                 <!-- Main Heading -->
                                 <h1 class="hero-title">
-                                    The single-file<br>PHP framework
+                                    Fitness app for<br>your good health
                                 </h1>
                                 <!-- Subtitle -->
                                 <p class="hero-subtitle">
-                                    Build powerful web applications with Rails-like features in a single PHP file. No dependencies, no build steps, no complexity. Just vanilla PHP that works.
+                                    Snaga is a health & fitness tracker app that helps you set out realistic goals that you can accomplish without many hurdles. Sometimes, we keep bigger goals but end up and workout sessions and exercises to help you keep fit.
                                 </p>
                                 <!-- Social Proof Section -->
                                 <div class="social-proof">
                                     <div class="social-proof-item">
+                                        <div class="avatar-stack">
+                                            <img src="https://i.pravatar.cc/80?img=1" alt="User" class="avatar">
+                                            <img src="https://i.pravatar.cc/80?img=2" alt="User" class="avatar">
+                                            <img src="https://i.pravatar.cc/80?img=3" alt="User" class="avatar">
+                                        </div>
                                         <div class="social-proof-text">
-                                            <span class="social-proof-number">~4000</span>
-                                            <span class="social-proof-label">Lines of Code</span>
+                                            <span class="social-proof-number">64,739</span>
+                                            <span class="social-proof-label">Happy Customers</span>
                                         </div>
                                     </div>
                                     <div class="social-proof-divider"></div>
                                     <div class="social-proof-item">
                                         <div class="social-proof-text">
-                                            <span class="social-proof-number">0</span>
-                                            <span class="social-proof-label">Dependencies</span>
-                                        </div>
-                                    </div>
-                                    <div class="social-proof-divider"></div>
-                                    <div class="social-proof-item">
-                                        <div class="social-proof-text">
-                                            <span class="social-proof-number">75+</span>
-                                            <span class="social-proof-label">Helper Functions</span>
+                                            <span class="social-proof-number">4.8/5</span>
+                                            <div class="rating-stars">
+                                                <span>&#9733;</span>
+                                                <span>&#9733;</span>
+                                                <span>&#9733;</span>
+                                                <span>&#9733;</span>
+                                                <span>&#9733;</span>
+                                                <span style="margin-left: 4px; color: var(--text-muted);">Rating</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <!-- CTA Buttons -->
-                                <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
-                                    <a href="/docs" class="hero-cta">
-                                        Get Started
-                                    </a>
-                                    <a href="/demo/" class="hero-cta" style="background: transparent; color: var(--text-inverse) !important; border-color: var(--text-inverse);">
-                                        Try Demo
-                                    </a>
-                                </div>
+                                <!-- CTA Button -->
+                                <a href="/signup" class="hero-cta">
+                                    Start a 10-day free trial
+                                </a>
                             </div>
-                            <!-- Right Column: Hero Card with Code -->
+                            <!-- Right Column: Hero Card -->
                             <div class="hero-image-wrapper">
                                 <div class="hero-card">
-                                    <div style="margin-bottom: var(--space-md);">
-                                        <span style="color: var(--text-muted); font-size: var(--text-sm);">Install with one command:</span>
+                                    <div class="video-wrapper">
+                                        <iframe src="https://www.youtube.com/embed/7blguIsASaw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                                     </div>
-                                    <div style="background: var(--bg-input); border-radius: var(--radius-md); padding: var(--space-md); font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-inverse); margin-bottom: var(--space-lg); overflow-x: auto;">
-                                        <code>curl -sL monophp.com/install | bash</code>
-                                    </div>
-                                    <div style="margin-bottom: var(--space-md);">
-                                        <span style="color: var(--text-muted); font-size: var(--text-sm);">Then create your project:</span>
-                                    </div>
-                                    <div style="background: var(--bg-input); border-radius: var(--radius-md); padding: var(--space-md); font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-inverse); margin-bottom: var(--space-lg); overflow-x: auto;">
-                                        <code>monophp new myapp</code>
-                                    </div>
-                                    <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
-                                        <span style="background: var(--primary-transparent); color: var(--primary); padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--text-xs);">PHP 8+</span>
-                                        <span style="background: var(--primary-transparent); color: var(--primary); padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--text-xs);">SQLite</span>
-                                        <span style="background: var(--primary-transparent); color: var(--primary); padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--text-xs);">Vanilla CSS</span>
-                                        <span style="background: var(--primary-transparent); color: var(--primary); padding: 4px 12px; border-radius: var(--radius-full); font-size: var(--text-xs);">jQuery</span>
+                                    <div class="login-form-wrapper">
+                                        <h3>Login to your account</h3>
+                                        <form action="/login" method="POST">
+                                            <?= csrf_field() ?>
+                                            <div class="form-group">
+                                                <input type="email" name="email" placeholder="Email address" required class="form-input">
+                                            </div>
+                                            <div class="form-group">
+                                                <input type="password" name="password" placeholder="Password" required class="form-input">
+                                            </div>
+                                            <button type="submit" class="btn btn-full">Login</button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -3673,208 +3681,15 @@
                     </section>
         <!-- ===[/VIEW:home]=== -->
 
-        <!-- ===[VIEW:features]=== -->
-        <!-- ROUTE: /features -->
+        <!-- ===[VIEW:feature]=== -->
+        <!-- ROUTE: /feature -->
         <!-- AUTH: None -->
-            <?php break; case 'features': ?>
-                <style>
-                    .features-hero {
-                        padding: 140px 20px 60px;
-                        text-align: center;
-                        background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-body) 100%);
-                    }
-                    .features-hero h1 {
-                        font-size: 3rem;
-                        color: var(--text-primary);
-                        margin-bottom: 16px;
-                    }
-                    .features-hero .tagline {
-                        font-size: 1.25rem;
-                        color: var(--text-secondary);
-                        max-width: 700px;
-                        margin: 0 auto;
-                    }
-                    .features-section {
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 60px 20px;
-                    }
-                    .features-section h2 {
-                        font-size: 2rem;
-                        color: var(--text-primary);
-                        margin-bottom: 40px;
-                        text-align: center;
-                    }
-                    .features-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                        gap: 30px;
-                    }
-                    .feature-card {
-                        background: var(--bg-card);
-                        border: 1px solid var(--bg-card-border);
-                        border-radius: 16px;
-                        padding: 30px;
-                        transition: transform 0.2s, box-shadow 0.2s;
-                    }
-                    .feature-card:hover {
-                        transform: translateY(-4px);
-                        box-shadow: var(--shadow-lg);
-                    }
-                    .feature-card .icon {
-                        width: 50px;
-                        height: 50px;
-                        background: var(--primary);
-                        border-radius: 12px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin-bottom: 20px;
-                        font-size: 1.5rem;
-                    }
-                    .feature-card h3 {
-                        font-size: 1.25rem;
-                        color: var(--text-primary);
-                        margin-bottom: 12px;
-                    }
-                    .feature-card p {
-                        font-size: 0.95rem;
-                        color: var(--text-secondary);
-                        line-height: 1.6;
-                        margin: 0;
-                    }
-                    .feature-card code {
-                        background: var(--bg-input);
-                        padding: 2px 6px;
-                        border-radius: 4px;
-                        font-size: 0.85rem;
-                        font-family: var(--font-mono);
-                    }
-                    .code-example {
-                        background: var(--bg-surface);
-                        border: 1px solid var(--bg-card-border);
-                        border-radius: 16px;
-                        padding: 30px;
-                        margin-top: 60px;
-                    }
-                    .code-example h3 {
-                        color: var(--text-primary);
-                        margin-bottom: 20px;
-                    }
-                    .code-example pre {
-                        background: var(--bg-input);
-                        padding: 20px;
-                        border-radius: 8px;
-                        overflow-x: auto;
-                        font-family: var(--font-mono);
-                        font-size: 0.9rem;
-                        color: var(--text-primary);
-                        margin: 0;
-                    }
-                </style>
-
-                <section class="features-hero">
-                    <h1>Everything You Need</h1>
-                    <p class="tagline">MonoPHP includes 75+ helper functions covering authentication, database operations, caching, validation, and more. All in a single file.</p>
+            <?php break; case 'feature': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Features</h2>
+                    <p>Discover all the amazing features that make Masco the perfect fitness companion for your health journey.</p>
                 </section>
-
-                <section class="features-section">
-                    <h2>Core Features</h2>
-                    <div class="features-grid">
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            </div>
-                            <h3>Built-in Security</h3>
-                            <p>CSRF protection, prepared statements, rate limiting, and secure session handling. Security is not an afterthought.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                            </div>
-                            <h3>Query Builder</h3>
-                            <p>Simple, expressive database queries with <code>db_find()</code>, <code>db_all()</code>, <code>db_insert()</code>, and soft deletes.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                            </div>
-                            <h3>Validation Layer</h3>
-                            <p>Declarative validation rules like Laravel: <code>required|email|unique:users</code>. Clean error handling included.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                            </div>
-                            <h3>Flash Messages</h3>
-                            <p>Rails-style flash messages that survive redirects. <code>flash('success', 'Saved!')</code> just works.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                            </div>
-                            <h3>Authentication</h3>
-                            <p>Password hashing, remember-me tokens, password reset flow. Choose email/password or OAuth variants.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                            </div>
-                            <h3>File-based Caching</h3>
-                            <p>Simple caching with <code>cache_remember()</code>. No Redis required. Perfect for small to medium apps.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            </div>
-                            <h3>File Uploads</h3>
-                            <p>Secure file handling with validation, image processing, and organized storage. <code>upload_image()</code> handles it all.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/></svg>
-                            </div>
-                            <h3>API Helpers</h3>
-                            <p>JSON responses, CORS headers, pagination. Build APIs with <code>api_success()</code> and <code>api_error()</code>.</p>
-                        </div>
-                        <div class="feature-card">
-                            <div class="icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-                            </div>
-                            <h3>Form Helpers</h3>
-                            <p>Generate forms with CSRF tokens automatically. <code>form_text()</code>, <code>form_select()</code>, and more.</p>
-                        </div>
-                    </div>
-
-                    <div class="code-example">
-                        <h3>Example: Creating a User</h3>
-                        <pre>&lt;?php
-// Validate input
-$errors = validate($_POST, [
-    'name' => 'required|min:2',
-    'email' => 'required|email|unique:users',
-    'password' => 'required|min:8|confirmed',
-]);
-
-if ($errors) {
-    foreach (validation_errors_flat($errors) as $error) {
-        flash('error', $error);
-    }
-    redirect('/signup');
-}
-
-// Create user
-$user_id = db_insert('users', [
-    'name' => $_POST['name'],
-    'email' => $_POST['email'],
-    'password' => password_hash($_POST['password'], PASSWORD_DEFAULT),
-]);
-
-flash('success', 'Welcome! Your account has been created.');
-redirect('/dashboard');</pre>
-                    </div>
-                </section>
-        <!-- ===[/VIEW:features]=== -->
+        <!-- ===[/VIEW:feature]=== -->
 
         <!-- ===[VIEW:about]=== -->
         <!-- ROUTE: /about -->
@@ -4059,473 +3874,190 @@ redirect('/dashboard');</pre>
                 </section>
         <!-- ===[/VIEW:about]=== -->
 
-        <!-- ===[VIEW:docs]=== -->
-        <!-- ROUTE: /docs -->
+        <!-- ===[VIEW:courses]=== -->
+        <!-- ROUTE: /courses -->
         <!-- AUTH: None -->
-            <?php break; case 'docs': ?>
-                <style>
-                    .docs-hero {
-                        padding: 120px 20px 60px;
-                        text-align: center;
-                        background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-body) 100%);
-                    }
-                    .docs-hero h1 {
-                        font-size: 3rem;
-                        color: var(--text-primary);
-                        margin-bottom: 16px;
-                    }
-                    .docs-hero .tagline {
-                        font-size: 1.25rem;
-                        color: var(--text-secondary);
-                        max-width: 600px;
-                        margin: 0 auto;
-                    }
-                    .docs-container {
-                        max-width: 1200px;
-                        margin: 0 auto;
-                        padding: 60px 20px;
-                        display: grid;
-                        grid-template-columns: 250px 1fr;
-                        gap: 60px;
-                    }
-                    .docs-sidebar {
-                        position: sticky;
-                        top: 100px;
-                        height: fit-content;
-                    }
-                    .docs-sidebar h3 {
-                        font-size: 0.75rem;
-                        text-transform: uppercase;
-                        letter-spacing: 0.1em;
-                        color: var(--text-muted);
-                        margin-bottom: 16px;
-                        padding-left: 12px;
-                    }
-                    .docs-sidebar ul {
-                        list-style: none;
-                        padding: 0;
-                        margin: 0 0 32px 0;
-                    }
-                    .docs-sidebar a {
-                        display: block;
-                        padding: 10px 12px;
-                        color: var(--text-secondary);
-                        text-decoration: none;
-                        border-radius: 6px;
-                        font-size: 0.95rem;
-                        transition: all 0.2s;
-                    }
-                    .docs-sidebar a:hover,
-                    .docs-sidebar a.active {
-                        background: var(--bg-card);
-                        color: var(--primary);
-                    }
-                    .docs-content {
-                        min-width: 0;
-                    }
-                    .docs-content h2 {
-                        font-size: 2rem;
-                        color: var(--text-primary);
-                        margin: 48px 0 24px;
-                        padding-bottom: 12px;
-                        border-bottom: 1px solid var(--bg-card-border);
-                    }
-                    .docs-content h2:first-child {
-                        margin-top: 0;
-                    }
-                    .docs-content h3 {
-                        font-size: 1.5rem;
-                        color: var(--text-primary);
-                        margin: 32px 0 16px;
-                    }
-                    .docs-content p {
-                        font-size: 1.05rem;
-                        color: var(--text-secondary);
-                        line-height: 1.8;
-                        margin-bottom: 20px;
-                    }
-                    .docs-content ul, .docs-content ol {
-                        margin: 0 0 24px 24px;
-                        color: var(--text-secondary);
-                        line-height: 1.8;
-                    }
-                    .docs-content li {
-                        margin-bottom: 8px;
-                    }
-                    .docs-content code {
-                        background: var(--bg-card);
-                        padding: 2px 8px;
-                        border-radius: 4px;
-                        font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-                        font-size: 0.9em;
-                        color: var(--primary);
-                    }
-                    .docs-code-block {
-                        background: #1e1e2e;
-                        border-radius: 12px;
-                        padding: 24px;
-                        margin: 24px 0;
-                        overflow-x: auto;
-                    }
-                    .docs-code-block pre {
-                        margin: 0;
-                        color: #cdd6f4;
-                        font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-                        font-size: 0.9rem;
-                        line-height: 1.6;
-                    }
-                    .docs-code-block .comment { color: #6c7086; }
-                    .docs-code-block .keyword { color: #cba6f7; }
-                    .docs-code-block .string { color: #a6e3a1; }
-                    .docs-code-block .function { color: #89b4fa; }
-                    .docs-code-block .variable { color: #f5c2e7; }
-                    .docs-code-block .number { color: #fab387; }
-                    .docs-callout {
-                        background: var(--bg-card);
-                        border-left: 4px solid var(--primary);
-                        padding: 20px 24px;
-                        border-radius: 0 8px 8px 0;
-                        margin: 24px 0;
-                    }
-                    .docs-callout.warning {
-                        border-left-color: #f59e0b;
-                    }
-                    .docs-callout.tip {
-                        border-left-color: #10b981;
-                    }
-                    .docs-callout p {
-                        margin: 0;
-                    }
-                    .docs-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 24px 0;
-                    }
-                    .docs-table th,
-                    .docs-table td {
-                        text-align: left;
-                        padding: 12px 16px;
-                        border-bottom: 1px solid var(--bg-card-border);
-                    }
-                    .docs-table th {
-                        background: var(--bg-card);
-                        font-weight: 600;
-                        color: var(--text-primary);
-                    }
-                    .docs-table td {
-                        color: var(--text-secondary);
-                    }
-                    .docs-table code {
-                        font-size: 0.85em;
-                    }
-                    @media (max-width: 900px) {
-                        .docs-container {
-                            grid-template-columns: 1fr;
-                            padding: 40px 16px;
-                        }
-                        .docs-sidebar {
-                            position: static;
-                            display: flex;
-                            flex-wrap: wrap;
-                            gap: 8px;
-                            padding-bottom: 24px;
-                            border-bottom: 1px solid var(--bg-card-border);
-                        }
-                        .docs-sidebar h3 {
-                            width: 100%;
-                        }
-                        .docs-sidebar ul {
-                            display: flex;
-                            flex-wrap: wrap;
-                            gap: 8px;
-                            margin: 0;
-                        }
-                        .docs-sidebar a {
-                            padding: 8px 16px;
-                            background: var(--bg-card);
-                            border-radius: 20px;
-                        }
-                        .docs-hero h1 {
-                            font-size: 2rem;
-                        }
-                    }
-                </style>
-
-                <!-- Hero Banner -->
-                <section class="docs-hero">
-                    <h1>Documentation</h1>
-                    <p class="tagline">Everything you need to build amazing applications with MonoPHP</p>
+            <?php break; case 'courses': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Courses</h2>
+                    <p>Explore our curated fitness courses designed to help you achieve your health and wellness goals.</p>
                 </section>
+        <!-- ===[/VIEW:courses]=== -->
 
-                <div class="docs-container">
-                    <!-- Sidebar Navigation -->
-                    <aside class="docs-sidebar">
-                        <h3>Getting Started</h3>
-                        <ul>
-                            <li><a href="#installation" class="active">Installation</a></li>
-                            <li><a href="#quick-start">Quick Start</a></li>
-                            <li><a href="#project-structure">Project Structure</a></li>
-                        </ul>
-                        <h3>Core Concepts</h3>
-                        <ul>
-                            <li><a href="#routing">Routing</a></li>
-                            <li><a href="#database">Database</a></li>
-                            <li><a href="#validation">Validation</a></li>
-                            <li><a href="#authentication">Authentication</a></li>
-                        </ul>
-                        <h3>Features</h3>
-                        <ul>
-                            <li><a href="#flash-messages">Flash Messages</a></li>
-                            <li><a href="#caching">Caching</a></li>
-                            <li><a href="#file-uploads">File Uploads</a></li>
-                        </ul>
-                    </aside>
+        <!-- ===[VIEW:testimonial]=== -->
+        <!-- ROUTE: /testimonial -->
+        <!-- AUTH: None -->
+            <?php break; case 'testimonial': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Testimonials</h2>
+                    <p>Hear from our 64,739 happy customers about their fitness journey with Masco.</p>
+                </section>
+        <!-- ===[/VIEW:testimonial]=== -->
 
-                    <!-- Main Content -->
-                    <main class="docs-content">
-                        <h2 id="installation">Installation</h2>
-                        <p>MonoPHP can be installed in seconds using our CLI tool. Make sure you have PHP 8.0+ installed on your system.</p>
+        <!-- ===[VIEW:contact]=== -->
+        <!-- ROUTE: /contact -->
+        <!-- AUTH: None -->
+            <?php break; case 'contact': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Contact Us</h2>
+                    <p>Have questions about Masco? We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.</p>
+                </section>
+        <!-- ===[/VIEW:contact]=== -->
 
-                        <h3>Install the CLI</h3>
-                        <p>Run this command in your terminal to install the MonoPHP CLI globally:</p>
-                        <div class="docs-code-block">
-                            <pre>curl -sL https://monophp.com/install.sh | bash</pre>
+        <!-- ===[VIEW:login]=== -->
+        <!-- ROUTE: /login -->
+        <!-- AUTH: None -->
+            <?php break; case 'login': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Login</h2>
+                    <p>Welcome back! Sign in to your Masco account.</p>
+                </section>
+        <!-- ===[/VIEW:login]=== -->
+
+        <!-- ===[VIEW:signup]=== -->
+        <!-- ROUTE: /signup -->
+        <!-- AUTH: None -->
+            <?php break; case 'signup': ?>
+                <section class="content" style="margin-top: 100px;">
+                    <h2>Sign Up</h2>
+                    <p>Create your free Masco account and start your fitness journey today.</p>
+                </section>
+        <!-- ===[/VIEW:signup]=== -->
+
+        <!-- ===[VIEW:dashboard]=== -->
+        <!-- ROUTE: /dashboard -->
+        <!-- AUTH: None (public demo) -->
+        <!-- CONTAINS: Dashboard cards with analytics, reports, settings, files -->
+            <?php break; case 'dashboard': ?>
+            <!-- ===[STYLES:dashboard]=== -->
+            <!-- PURPOSE: Dashboard page styles -->
+                <style>
+                .dashboard-content {
+                    margin-top: 100px;
+                    padding: 2rem;
+                    min-height: calc(100vh - 200px);
+                }
+
+                .dashboard-header {
+                    margin-bottom: 2rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 1px solid #e9ecef;
+                }
+
+                .dashboard-header h2 {
+                    margin: 0 0 0.5rem 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.75rem;
+                }
+
+                .dashboard-header p {
+                    margin: 0;
+                    color: #6c757d;
+                    font-size: 1rem;
+                }
+
+                .dashboard-cards {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1.5rem;
+                    margin-bottom: 2rem;
+                }
+
+                .dashboard-card {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    border: 1px solid #e9ecef;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .dashboard-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+
+                .card-header {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                }
+
+                .card-icon {
+                    width: 40px;
+                    height: 40px;
+                    background: var(--primary);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 1rem;
+                    font-size: 1.2rem;
+                }
+
+                .card-title {
+                    margin: 0;
+                    color: #333;
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                }
+
+                .card-content {
+                    color: #6c757d;
+                    line-height: 1.6;
+                }
+                </style>
+            <!-- ===[/STYLES:dashboard]=== -->
+            <!--Dashboard HTML-->
+                <section class="dashboard-content">
+                    <div class="dashboard-header">
+                        <h2>Dashboard</h2>
+                        <p>Welcome to your application dashboard.</p>
+                    </div>
+
+                    <div class="dashboard-cards">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📊</div>
+                                <h3 class="card-title">Analytics</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Track performance metrics and gain insights into your platform.</p>
+                            </div>
                         </div>
 
-                        <h3>Create a New Project</h3>
-                        <div class="docs-code-block">
-                            <pre>monophp new myproject
-<span class="keyword">cd</span> myproject
-php -S localhost:8000 -t public</pre>
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📋</div>
+                                <h3 class="card-title">Reports</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Generate and view detailed reports for your business.</p>
+                            </div>
                         </div>
 
-                        <p>That's it! Open <code>http://localhost:8000</code> in your browser to see your new application.</p>
-
-                        <div class="docs-callout tip">
-                            <p><strong>Tip:</strong> The CLI will prompt you to choose an authentication variant. You can change this later by swapping out the <code>public/index.php</code> file.</p>
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">⚙️</div>
+                                <h3 class="card-title">Settings</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Configure and customize your application settings.</p>
+                            </div>
                         </div>
 
-                        <h2 id="quick-start">Quick Start</h2>
-                        <p>Let's build a simple todo list to understand how MonoPHP works. Everything happens in a single file: <code>public/index.php</code>.</p>
-
-                        <h3>1. Add a Route</h3>
-                        <p>Find the <code>$route_categories</code> array and add your new route:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="variable">$route_categories</span> = [
-    <span class="string">'public'</span> => [
-        <span class="string">'/'</span> => <span class="string">'home'</span>,
-        <span class="string">'/todos'</span> => <span class="string">'todos'</span>,  <span class="comment">// Add this line</span>
-    ],
-];</pre>
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <div class="card-icon">📁</div>
+                                <h3 class="card-title">Files</h3>
+                            </div>
+                            <div class="card-content">
+                                <p>Manage your files and documents in one place.</p>
+                            </div>
                         </div>
-
-                        <h3>2. Create the View</h3>
-                        <p>Add a new case in the view switch statement:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="keyword">case</span> <span class="string">'todos'</span>:
-    <span class="variable">$todos</span> = <span class="function">db_all</span>(<span class="string">'todos'</span>);
-    <span class="keyword">?></span>
-    <span class="keyword">&lt;h1&gt;</span>My Todos<span class="keyword">&lt;/h1&gt;</span>
-    <span class="keyword">&lt;?php foreach</span> (<span class="variable">$todos</span> <span class="keyword">as</span> <span class="variable">$todo</span>): <span class="keyword">?&gt;</span>
-        <span class="keyword">&lt;p&gt;</span><span class="keyword">&lt;?=</span> <span class="function">e</span>(<span class="variable">$todo</span>[<span class="string">'title'</span>]) <span class="keyword">?&gt;&lt;/p&gt;</span>
-    <span class="keyword">&lt;?php endforeach; ?&gt;</span>
-    <span class="keyword">&lt;?php break;</span></pre>
-                        </div>
-
-                        <h2 id="project-structure">Project Structure</h2>
-                        <p>A MonoPHP project has a clean, minimal structure:</p>
-                        <div class="docs-code-block">
-                            <pre>myproject/
-├── public/
-│   ├── index.php      <span class="comment"># Your entire application</span>
-│   ├── assets/        <span class="comment"># CSS, JS, images</span>
-│   └── uploads/       <span class="comment"># User uploads</span>
-├── database/
-│   └── myproject.sqlite
-├── cache/
-├── logs/
-└── .env               <span class="comment"># Environment config</span></pre>
-                        </div>
-
-                        <h2 id="routing">Routing</h2>
-                        <p>Routes are defined in the <code>$route_categories</code> array. Each category groups related routes:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="variable">$route_categories</span> = [
-    <span class="string">'public'</span> => [
-        <span class="string">'/'</span> => <span class="string">'home'</span>,
-        <span class="string">'/about'</span> => <span class="string">'about'</span>,
-    ],
-    <span class="string">'auth'</span> => [
-        <span class="string">'/login'</span> => <span class="string">'login'</span>,
-        <span class="string">'/signup'</span> => <span class="string">'signup'</span>,
-    ],
-    <span class="string">'protected'</span> => [
-        <span class="string">'/dashboard'</span> => <span class="string">'dashboard'</span>,
-        <span class="string">'/settings'</span> => <span class="string">'settings'</span>,
-    ],
-];</pre>
-                        </div>
-
-                        <h2 id="database">Database</h2>
-                        <p>MonoPHP uses SQLite with a simple query builder. No ORM, no complexity - just clean SQL wrappers.</p>
-
-                        <h3>Query Builder Functions</h3>
-                        <table class="docs-table">
-                            <thead>
-                                <tr>
-                                    <th>Function</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>db_find($table, $id)</code></td>
-                                    <td>Find a record by ID</td>
-                                </tr>
-                                <tr>
-                                    <td><code>db_all($table, $where, $order, $limit)</code></td>
-                                    <td>Get all matching records</td>
-                                </tr>
-                                <tr>
-                                    <td><code>db_insert($table, $data)</code></td>
-                                    <td>Insert a new record</td>
-                                </tr>
-                                <tr>
-                                    <td><code>db_update($table, $id, $data)</code></td>
-                                    <td>Update an existing record</td>
-                                </tr>
-                                <tr>
-                                    <td><code>db_delete($table, $id)</code></td>
-                                    <td>Delete a record</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <h3>Example Usage</h3>
-                        <div class="docs-code-block">
-                            <pre><span class="comment">// Create a user</span>
-<span class="variable">$id</span> = <span class="function">db_insert</span>(<span class="string">'users'</span>, [
-    <span class="string">'name'</span> => <span class="string">'John Doe'</span>,
-    <span class="string">'email'</span> => <span class="string">'john@example.com'</span>,
-    <span class="string">'password'</span> => <span class="function">password_hash</span>(<span class="string">'secret'</span>, PASSWORD_DEFAULT),
-]);
-
-<span class="comment">// Find by ID</span>
-<span class="variable">$user</span> = <span class="function">db_find</span>(<span class="string">'users'</span>, <span class="variable">$id</span>);
-
-<span class="comment">// Query with conditions</span>
-<span class="variable">$admins</span> = <span class="function">db_all</span>(<span class="string">'users'</span>, [<span class="string">'role'</span> => <span class="string">'admin'</span>], <span class="string">'created_at DESC'</span>);</pre>
-                        </div>
-
-                        <h2 id="validation">Validation</h2>
-                        <p>The built-in validation system supports common rules with clear error messages:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="variable">$errors</span> = <span class="function">validate</span>(<span class="variable">$_POST</span>, [
-    <span class="string">'name'</span> => <span class="string">'required|min:2|max:100'</span>,
-    <span class="string">'email'</span> => <span class="string">'required|email|unique:users'</span>,
-    <span class="string">'password'</span> => <span class="string">'required|min:8|confirmed'</span>,
-]);
-
-<span class="keyword">if</span> (<span class="variable">$errors</span>) {
-    <span class="keyword">foreach</span> (<span class="function">validation_errors_flat</span>(<span class="variable">$errors</span>) <span class="keyword">as</span> <span class="variable">$error</span>) {
-        <span class="function">flash</span>(<span class="string">'error'</span>, <span class="variable">$error</span>);
-    }
-    <span class="function">redirect</span>(<span class="string">'/signup'</span>);
-}</pre>
-                        </div>
-
-                        <h3>Available Rules</h3>
-                        <table class="docs-table">
-                            <thead>
-                                <tr>
-                                    <th>Rule</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><code>required</code></td><td>Field must not be empty</td></tr>
-                                <tr><td><code>email</code></td><td>Must be valid email format</td></tr>
-                                <tr><td><code>min:n</code></td><td>Minimum length of n characters</td></tr>
-                                <tr><td><code>max:n</code></td><td>Maximum length of n characters</td></tr>
-                                <tr><td><code>confirmed</code></td><td>Must match {field}_confirmation</td></tr>
-                                <tr><td><code>unique:table</code></td><td>Must not exist in table</td></tr>
-                                <tr><td><code>numeric</code></td><td>Must be numeric</td></tr>
-                                <tr><td><code>url</code></td><td>Must be valid URL</td></tr>
-                            </tbody>
-                        </table>
-
-                        <h2 id="authentication">Authentication</h2>
-                        <p>MonoPHP includes built-in authentication with session management, remember me tokens, and password reset:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="comment">// Check if user is logged in</span>
-<span class="keyword">if</span> (<span class="function">is_logged_in</span>()) {
-    <span class="variable">$user</span> = <span class="function">current_user</span>();
-    <span class="keyword">echo</span> <span class="string">"Welcome, "</span> . <span class="variable">$user</span>[<span class="string">'name'</span>];
-}
-
-<span class="comment">// Require authentication</span>
-<span class="function">require_auth</span>(); <span class="comment">// Redirects to /login if not authenticated</span>
-
-<span class="comment">// Log in a user</span>
-<span class="function">login_user</span>(<span class="variable">$user</span>[<span class="string">'id'</span>]);
-
-<span class="comment">// Log out</span>
-<span class="function">logout_user</span>();</pre>
-                        </div>
-
-                        <h2 id="flash-messages">Flash Messages</h2>
-                        <p>Flash messages survive a single redirect, perfect for form submissions:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="comment">// Set a flash message</span>
-<span class="function">flash</span>(<span class="string">'success'</span>, <span class="string">'Your changes have been saved!'</span>);
-<span class="function">flash</span>(<span class="string">'error'</span>, <span class="string">'Something went wrong.'</span>);
-<span class="function">flash</span>(<span class="string">'info'</span>, <span class="string">'Please check your email.'</span>);
-
-<span class="comment">// Redirect (message persists)</span>
-<span class="function">redirect</span>(<span class="string">'/dashboard'</span>);
-
-<span class="comment">// In your view, render all flash messages</span>
-<span class="keyword">&lt;?=</span> <span class="function">flash_render</span>() <span class="keyword">?&gt;</span></pre>
-                        </div>
-
-                        <h2 id="caching">Caching</h2>
-                        <p>File-based caching for expensive operations:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="comment">// Cache a value for 1 hour</span>
-<span class="function">cache_set</span>(<span class="string">'stats'</span>, <span class="variable">$data</span>, <span class="number">3600</span>);
-
-<span class="comment">// Get cached value</span>
-<span class="variable">$stats</span> = <span class="function">cache_get</span>(<span class="string">'stats'</span>);
-
-<span class="comment">// Cache with automatic regeneration</span>
-<span class="variable">$stats</span> = <span class="function">cache_remember</span>(<span class="string">'dashboard_stats'</span>, <span class="number">3600</span>, <span class="keyword">function</span>() {
-    <span class="keyword">return</span> [
-        <span class="string">'users'</span> => <span class="function">db_count</span>(<span class="string">'users'</span>),
-        <span class="string">'posts'</span> => <span class="function">db_count</span>(<span class="string">'posts'</span>),
-    ];
-});</pre>
-                        </div>
-
-                        <h2 id="file-uploads">File Uploads</h2>
-                        <p>Secure file upload handling with validation:</p>
-                        <div class="docs-code-block">
-                            <pre><span class="comment">// Upload any file</span>
-<span class="variable">$path</span> = <span class="function">upload_file</span>(<span class="variable">$_FILES</span>[<span class="string">'document'</span>], <span class="string">'documents/'</span>);
-
-<span class="comment">// Upload and resize an image</span>
-<span class="variable">$path</span> = <span class="function">upload_image</span>(<span class="variable">$_FILES</span>[<span class="string">'avatar'</span>], <span class="string">'avatars/'</span>, [
-    <span class="string">'max_width'</span> => <span class="number">400</span>,
-    <span class="string">'max_height'</span> => <span class="number">400</span>,
-    <span class="string">'quality'</span> => <span class="number">85</span>,
-]);</pre>
-                        </div>
-
-                        <div class="docs-callout">
-                            <p><strong>Need more?</strong> Check out the source code in <code>public/index.php</code>. Every function is documented with PHPDoc comments. The entire framework is designed to be readable and hackable.</p>
-                        </div>
-                    </main>
-                </div>
-        <!-- ===[/VIEW:docs]=== -->
+                    </div>
+                </section>
+        <!-- ===[/VIEW:dashboard]=== -->
 
         <!-- ===[VIEW:404]=== -->
         <!-- ROUTE: (default/fallback) -->

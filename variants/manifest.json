@@ -1,0 +1,50 @@
+{
+  "default": "emailpass-sidebar",
+  "variants": [
+    {
+      "id": "emailpass-sidebar",
+      "name": "Email & Password (Sidebar)",
+      "description": "Traditional email/password auth with sidebar dashboard layout",
+      "auth_type": "email_password",
+      "layout": "sidebar",
+      "features": ["login", "signup", "password-reset", "remember-me"],
+      "demo_url": "/demo/emailpass-sidebar"
+    },
+    {
+      "id": "emailpass-topbar",
+      "name": "Email & Password (Topbar)",
+      "description": "Email/password auth with topbar navigation layout",
+      "auth_type": "email_password",
+      "layout": "topbar",
+      "features": ["login", "signup", "password-reset", "remember-me"],
+      "demo_url": "/demo/emailpass-topbar"
+    },
+    {
+      "id": "googleoauth",
+      "name": "Google OAuth",
+      "description": "Google OAuth authentication with modern UX",
+      "auth_type": "oauth",
+      "oauth_providers": ["google"],
+      "features": ["oauth-login", "profile-sync"],
+      "demo_url": "/demo/googleoauth",
+      "requires_env": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
+    },
+    {
+      "id": "noauth",
+      "name": "No Authentication",
+      "description": "Minimal variant without any authentication - perfect for public sites",
+      "auth_type": "none",
+      "features": [],
+      "demo_url": "/demo/noauth"
+    },
+    {
+      "id": "newstructure-email",
+      "name": "New Structure (Experimental)",
+      "description": "Experimental new code structure with email auth",
+      "auth_type": "email_password",
+      "experimental": true,
+      "features": ["login", "signup"],
+      "demo_url": "/demo/newstructure-email"
+    }
+  ]
+}

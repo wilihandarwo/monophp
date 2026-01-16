@@ -6,7 +6,7 @@
 set -e
 
 MONOPHP_REPO="https://github.com/wilihandarwo/monophp.git"
-VERSION="1.0.0"
+VERSION="2.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -34,14 +34,49 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  new <name>     Create a new MonoPHP project"
+    echo "  list           List available variants"
     echo "  update         Update MonoPHP CLI to latest version"
     echo "  help           Show this help message"
     echo "  version        Show version"
     echo ""
     echo "Examples:"
     echo "  monophp new myapp"
+    echo "  monophp list"
     echo "  monophp update"
     echo ""
+}
+
+list_variants() {
+    print_logo
+    echo "Available MonoPHP Variants:"
+    echo ""
+
+    local manifest_url="https://raw.githubusercontent.com/wilihandarwo/monophp/main/variants/manifest.json"
+
+    if command -v jq &> /dev/null; then
+        local manifest=$(curl -sL "$manifest_url" 2>/dev/null)
+        if [[ -n "$manifest" ]]; then
+            echo "$manifest" | jq -r '.variants[] | "  \(.id)\n    \(.name) - \(.description)\n"'
+        else
+            echo "  (Unable to fetch variants list)"
+        fi
+    else
+        echo "  emailpass-sidebar"
+        echo "    Email & Password (Sidebar) - Traditional auth with sidebar layout"
+        echo ""
+        echo "  emailpass-topbar"
+        echo "    Email & Password (Topbar) - Traditional auth with topbar layout"
+        echo ""
+        echo "  googleoauth"
+        echo "    Google OAuth - OAuth authentication with Google"
+        echo ""
+        echo "  noauth"
+        echo "    No Authentication - Minimal variant without auth"
+        echo ""
+        echo "  newstructure-email"
+        echo "    New Structure (Experimental) - New code structure with email auth"
+        echo ""
+    fi
 }
 
 show_version() {
@@ -128,6 +163,7 @@ select_option() {
 create_project() {
     local project_name="$1"
     local target_dir="$(pwd)/${project_name}"
+    local temp_dir=$(mktemp -d)
 
     # Validate project name
     if [[ -z "$project_name" ]]; then
@@ -159,60 +195,61 @@ create_project() {
     echo -e "${GREEN}Creating new MonoPHP project: ${project_name}${NC}"
     echo ""
 
-    # Clone from GitHub
+    # Clone from GitHub to temp directory
     echo -e "${YELLOW}➜${NC} Downloading MonoPHP template..."
-    git clone --quiet --depth 1 "$MONOPHP_REPO" "$target_dir"
+    git clone --quiet --depth 1 "$MONOPHP_REPO" "$temp_dir/monophp"
 
-    # Remove .git directory from template and reinitialize
-    rm -rf "$target_dir/.git"
-
-    # Remove CLI-related files (not needed in new projects)
-    rm -rf "$target_dir/bin"
-    rm -f "$target_dir/install.sh"
-    rm -f "$target_dir/CLAUDE.md"
-    rm -f "$target_dir/WARP.md"
+    # Copy the framework structure (complete website template)
+    cp -r "$temp_dir/monophp/framework" "$target_dir"
 
     # Prompt for authentication variant
     echo ""
     echo -e "${YELLOW}Select authentication method:${NC}  ${BLUE}(↑↓ to move, Enter to select)${NC}"
     echo ""
 
-    select_option "Email & Password" "Google OAuth" "No Auth"
+    select_option "Email & Password (Sidebar)" "Email & Password (Topbar)" "Google OAuth" "No Auth"
     auth_choice=$SELECTED_OPTION
 
     echo ""
-    auth_label="Email & Password"  # Default
-    local variant_file=""
+    auth_label="Email & Password (Sidebar)"  # Default
+    local variant_id=""
     case $auth_choice in
         0)
-            auth_label="Email & Password"
-            variant_file="index-emailpass-sidebar.php"
+            auth_label="Email & Password (Sidebar)"
+            variant_id="emailpass-sidebar"
             ;;
         1)
-            auth_label="Google OAuth"
-            variant_file="index-googleoauth.php"
+            auth_label="Email & Password (Topbar)"
+            variant_id="emailpass-topbar"
             ;;
         2)
+            auth_label="Google OAuth"
+            variant_id="googleoauth"
+            ;;
+        3)
             auth_label="No Auth"
-            variant_file="index-noauth.php"
+            variant_id="noauth"
             ;;
         *)
-            variant_file="index-emailpass-sidebar.php"
+            variant_id="emailpass-sidebar"
             ;;
     esac
 
     echo -e "${YELLOW}➜${NC} Using ${auth_label} authentication..."
-    if [[ -f "$target_dir/resources/index-variant/$variant_file" ]]; then
-        cp "$target_dir/resources/index-variant/$variant_file" "$target_dir/public/index.php"
+
+    # Copy selected variant's index.php to project
+    local variant_file="$temp_dir/monophp/variants/$variant_id/index.php"
+    if [[ -f "$variant_file" ]]; then
+        cp "$variant_file" "$target_dir/public/index.php"
     else
-        echo -e "${RED}Error: Variant file not found: $variant_file${NC}"
+        echo -e "${RED}Error: Variant not found: $variant_id${NC}"
         echo -e "${RED}Please run 'monophp update' to get the latest version${NC}"
-        rm -rf "$target_dir"
+        rm -rf "$target_dir" "$temp_dir"
         exit 1
     fi
 
-    # Remove variant files (not needed in new projects)
-    rm -rf "$target_dir/resources/index-variant"
+    # Clean up temp directory
+    rm -rf "$temp_dir"
 
     # Create .env from .env.example
     cp "$target_dir/.env.example" "$target_dir/.env"
@@ -223,19 +260,21 @@ create_project() {
     # Update database filename in index.php (cross-platform sed)
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "s/monophp\.sqlite/${project_name}.sqlite/g" "$target_dir/public/index.php"
-        sed -i '' "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
+        sed -i '' "s/SITE_DOMAIN=localhost:8000/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
     else
         sed -i "s/monophp\.sqlite/${project_name}.sqlite/g" "$target_dir/public/index.php"
-        sed -i "s/SITE_DOMAIN=$/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
+        sed -i "s/SITE_DOMAIN=localhost:8000/SITE_DOMAIN=${project_name}.test/" "$target_dir/.env"
     fi
 
     # Ensure directories exist and are clean
     mkdir -p "$target_dir/logs"
     mkdir -p "$target_dir/database"
+    mkdir -p "$target_dir/cache"
     rm -f "$target_dir/database/"*.sqlite
     rm -f "$target_dir/logs/"*.log
     touch "$target_dir/database/.gitkeep"
     touch "$target_dir/logs/.gitkeep"
+    touch "$target_dir/cache/.gitkeep"
 
     # Initialize fresh git repository
     echo -e "${YELLOW}➜${NC} Initializing git repository..."
@@ -250,6 +289,7 @@ create_project() {
     echo -e "  ${GREEN}✓${NC} Environment file: .env created"
     echo -e "  ${GREEN}✓${NC} Database: database/${project_name}.sqlite (will be created on first run)"
     echo -e "  ${GREEN}✓${NC} Logs folder: logs/"
+    echo -e "  ${GREEN}✓${NC} Cache folder: cache/"
     echo ""
     echo -e "${YELLOW}To start your project:${NC}"
     echo ""
@@ -264,6 +304,9 @@ create_project() {
 case "${1:-}" in
     new)
         create_project "$2"
+        ;;
+    list|variants)
+        list_variants
         ;;
     update)
         update_cli

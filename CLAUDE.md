@@ -20,7 +20,8 @@ There are no build, lint, or test commands. Edit `public/index.php` directly and
 
 ## AI Agent Navigation
 
-Read the TABLE OF CONTENTS at lines 18-70 of `index.php` for current section line numbers.
+For framework development, read `/framework/public/index.php` (the canonical source).
+Read the TABLE OF CONTENTS near the top for current section line numbers.
 
 **Search markers:**
 - Sections: `===[SECTION:name]===`
@@ -168,15 +169,56 @@ if (is_api_request()) {
 }
 ```
 
+## Repository Structure
+
+This repository serves two purposes:
+1. **Marketing site** (monophp.com) - served from `/public/`
+2. **Framework source** - template for new projects in `/framework/` and `/variants/`
+
+```
+/monophp/
+├── framework/           # Complete website template (copied by CLI)
+│   ├── public/
+│   │   └── index.php    # Canonical framework file
+│   ├── database/
+│   ├── cache/
+│   ├── logs/
+│   └── .env.example
+├── variants/            # Alternative index.php implementations
+│   ├── manifest.json    # Variant registry
+│   ├── emailpass-sidebar/
+│   ├── emailpass-topbar/
+│   ├── googleoauth/
+│   ├── noauth/
+│   └── newstructure-email/
+├── public/              # Marketing site (monophp.com)
+│   ├── index.php        # Marketing landing page
+│   └── demo/            # Live variant demos
+│       ├── index.php    # Demo router
+│       └── listing.php  # Demo gallery
+├── demo-data/           # Isolated demo databases
+├── bin/monophp          # CLI tool
+└── ...
+```
+
 ## File Locations
 
-- Main app: `/public/index.php`
+**Framework (canonical source):**
+- Framework template: `/framework/public/index.php`
+- Variants: `/variants/{variant-id}/index.php`
+- Variant manifest: `/variants/manifest.json`
+
+**Marketing site:**
+- Marketing page: `/public/index.php`
+- Demo router: `/public/demo/index.php`
+- Demo databases: `/demo-data/`
+
+**Shared:**
 - Database: `/database/monophp.sqlite`
 - Error logs: `/logs/app.log`
 - Cache: `/cache/`
 - Uploads: `/public/uploads/`
 - Environment: `/.env`
-- Archived code: `/parking/` (ignore)
 
 ## Adding New Routes
 
@@ -196,7 +238,8 @@ Migrations run automatically on every request.
 
 ## Development Rules
 
-1. **DO NOT create new files** - add to `public/index.php`
+**For framework development** (in `/framework/public/index.php`):
+1. **DO NOT create new files** - add to `index.php`
 2. **Use procedural PHP only** - no classes/objects
 3. **Use `e()` for all output** - HTML escaping
 4. **Use query builder** - `db_*()` functions with prepared statements
@@ -205,6 +248,10 @@ Migrations run automatically on every request.
 7. **Place styles near views** - inline `<style>` tags
 8. **Use CSS variables** - reference `:root` custom properties
 9. **Follow section markers** - `===[SECTION:name]===` convention
+
+**For marketing site** (in `/public/index.php`):
+- Standard PHP/HTML development
+- Keep simple and focused on promoting MonoPHP
 
 ## CSS Variables
 
